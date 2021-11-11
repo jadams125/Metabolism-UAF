@@ -16,11 +16,11 @@ library(googledrive)
 
 
 #(Jacob)
-oddessy.data.2021.url <- "https://drive.google.com/drive/u/2/folders/1EPjHLDmfbCo5n12AKj7QpN2vXRCPQtg5"
-oddessy2021 <- drive_get(as_id(oddessy.data.2021.url))
-test1_glist <- drive_ls(oddessy2021, pattern = "all.dates.par.2021.csv")
-walk(test1_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
-Par2021Data <- read.csv("all.dates.par.2021.csv")
+# oddessy.data.2021.url <- "https://drive.google.com/drive/u/2/folders/1EPjHLDmfbCo5n12AKj7QpN2vXRCPQtg5"
+# oddessy2021 <- drive_get(as_id(oddessy.data.2021.url))
+# test1_glist <- drive_ls(oddessy2021, pattern = "all.dates.par.2021.csv")
+# walk(test1_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+# Par2021Data <- read.csv("all.dates.par.2021.csv")
 
 
 instrument_2020_PAR_calibration <- "https://drive.google.com/drive/u/2/folders/1Yclao7XQr7B7OeNRdavRfw3_DQ2JRoUT"
@@ -79,10 +79,13 @@ ggplot(ref_200530, aes(datetime_AK, PAR_Tot_Tot)) + geom_line()
 
 
 
-#### Old import method
-#SN11615 = read.csv("Odyssey PAR calibration/2020/11615_cal.CSV",
-                  # skip = 8, header = F)
+                #### Old import method
+                #SN11615 = read.csv("Odyssey PAR calibration/2020/11615_cal.CSV",
+                                  # skip = 8, header = F)
 
+
+
+### Calibration data
 #new import with google
 
 #11615
@@ -167,48 +170,49 @@ ggplot(ref_200530, aes(datetime_AK, PAR_Tot_Tot)) + geom_line()
   
   
 #################  OLD CODE ###########  
+              
+              # SN11616 = read.csv("Odyssey PAR calibration/2020/11616_cal.CSV",
+              #                    skip = 8, header = F)
+              # SN11616 = SN11616[,2:4]
+              # colnames(SN11616) = c("Date", "Time", "counts")
+              # SN11616$datetime_AK = paste(SN11616$Date, SN11616$Time, sep=" ")
+              # SN11616$datetime_AK = as.POSIXct(SN11616$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+              # SN11616$SN = "SN11616"
+              # 
+              # SN11617 = read.csv("Odyssey PAR calibration/2020/11617_cal.CSV",
+              #                    skip = 8, header = F)
+              # SN11617 = SN11617[,2:4]
+              # colnames(SN11617) = c("Date", "Time", "counts")
+              # SN11617$datetime_AK = paste(SN11617$Date, SN11617$Time, sep=" ")
+              # SN11617$datetime_AK = as.POSIXct(SN11617$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+              # SN11617$SN = "SN11617"
+              # 
+              # SN11618 = read.csv("Odyssey PAR calibration/2020/11618_cal.CSV",
+              #                    skip = 8, header = F)
+              # SN11618 = SN11618[,2:4]
+              # colnames(SN11618) = c("Date", "Time", "counts")
+              # SN11618$datetime_AK = paste(SN11618$Date, SN11618$Time, sep=" ")
+              # SN11618$datetime_AK = as.POSIXct(SN11618$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+              # SN11618$SN = "SN11618"
+              # 
+              # SN11619 = read.csv("Odyssey PAR calibration/2020/11619_cal.CSV",
+              #                    skip = 8, header = F)
+              # SN11619 = SN11619[,2:4]
+              # colnames(SN11619) = c("Date", "Time", "counts")
+              # SN11619$datetime_AK = paste(SN11619$Date, SN11619$Time, sep=" ")
+              # SN11619$datetime_AK = as.POSIXct(SN11619$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+              # SN11619$SN = "SN11619"
+              # 
+              # SN11620 = read.csv("Odyssey PAR calibration/2020/11620_cal.CSV",
+              #                    skip = 8, header = F)
+              # SN11620 = SN11620[,2:4]
+              # colnames(SN11620) = c("Date", "Time", "counts")
+              # SN11620$datetime_AK = paste(SN11620$Date, SN11620$Time, sep=" ")
+              # SN11620$datetime_AK = as.POSIXct(SN11620$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
+              # SN11620$SN = "SN11620"
 
-# SN11616 = read.csv("Odyssey PAR calibration/2020/11616_cal.CSV",
-#                    skip = 8, header = F)
-# SN11616 = SN11616[,2:4]
-# colnames(SN11616) = c("Date", "Time", "counts")
-# SN11616$datetime_AK = paste(SN11616$Date, SN11616$Time, sep=" ")
-# SN11616$datetime_AK = as.POSIXct(SN11616$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-# SN11616$SN = "SN11616"
-# 
-# SN11617 = read.csv("Odyssey PAR calibration/2020/11617_cal.CSV",
-#                    skip = 8, header = F)
-# SN11617 = SN11617[,2:4]
-# colnames(SN11617) = c("Date", "Time", "counts")
-# SN11617$datetime_AK = paste(SN11617$Date, SN11617$Time, sep=" ")
-# SN11617$datetime_AK = as.POSIXct(SN11617$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-# SN11617$SN = "SN11617"
-# 
-# SN11618 = read.csv("Odyssey PAR calibration/2020/11618_cal.CSV",
-#                    skip = 8, header = F)
-# SN11618 = SN11618[,2:4]
-# colnames(SN11618) = c("Date", "Time", "counts")
-# SN11618$datetime_AK = paste(SN11618$Date, SN11618$Time, sep=" ")
-# SN11618$datetime_AK = as.POSIXct(SN11618$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-# SN11618$SN = "SN11618"
-# 
-# SN11619 = read.csv("Odyssey PAR calibration/2020/11619_cal.CSV",
-#                    skip = 8, header = F)
-# SN11619 = SN11619[,2:4]
-# colnames(SN11619) = c("Date", "Time", "counts")
-# SN11619$datetime_AK = paste(SN11619$Date, SN11619$Time, sep=" ")
-# SN11619$datetime_AK = as.POSIXct(SN11619$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-# SN11619$SN = "SN11619"
-# 
-# SN11620 = read.csv("Odyssey PAR calibration/2020/11620_cal.CSV",
-#                    skip = 8, header = F)
-# SN11620 = SN11620[,2:4]
-# colnames(SN11620) = c("Date", "Time", "counts")
-# SN11620$datetime_AK = paste(SN11620$Date, SN11620$Time, sep=" ")
-# SN11620$datetime_AK = as.POSIXct(SN11620$datetime_AK, format="%d/%m/%Y %H:%M:%S", tz="America/Anchorage")
-# SN11620$SN = "SN11620"
 
-  
+#Calibration continued
   #### (Jacob) Added new Rbind labels 
   
 loggers_200530 = rbind(cal.11615_2020Data, cal.11616_2020Data, cal.11617_2020Data, cal.11618_2020Data, 
@@ -263,19 +267,7 @@ write.csv(final_cal_dat_200530, "Odyssey PAR calibration/2020/final_cal_dat_2005
 
 
 
-############################ 2021 data #########################################
-
-###
-# str(all.dates.par.2021.trimmed)
-# 
-# qplot( DateTime,Calibrated.Value, data = all.dates.par.2021.trimmed) +
-#   facet_wrap(~site)+
-#   geom_hline()
-
-
-
-
-
+############################ Converting oddessey 2021 data to PAR values from above calibration curve #########################################
 
 
 ?read.csv
@@ -421,13 +413,10 @@ frch2021Data$site <- "frch"
 all.dates.par.2021 <- rbind(strt2021Data, poke2021Data, moos2021Data, vaul2021Data, frch2021Data)
 
 
-
-
-
 ggplot(data=all.dates.par.2021, aes(y=regression.value, x=DateTime)) +
   geom_line() + 
   labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
-  ggtitle("All sites PAR")+
+  ggtitle("All sites PAR 2021")+
   facet_wrap(~site)
 
 write.csv(all.dates.par.2021, file="C:/Users/jacob/OneDrive/Documents/LabLearning/all.dates.par.2021.csv", row.names = FALSE)
@@ -436,11 +425,325 @@ getwd()
 
 
 
-#--------------------
+############ 2020 ############
+
+#French
+
+frch.2020.url <- "https://drive.google.com/drive/u/2/folders/1udve7khOM2EX0l8BZQK3yehb2HUbwFtR"
+frch2020 <- drive_get(as_id(frch.2020.url))
+test2frch_glist <- drive_ls(frch2020, pattern = "11618_006_002_FRCH_EndOfSeason.CSV")
+walk(test2frch_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+frch2020Data <- read.csv("11618_006_002_FRCH_EndOfSeason.CSV", 
+                         skip = 9, header = FALSE)
+
+frch2020Data <- frch2020Data[c(1:12093),]
+
+names(frch2020Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+frch2020Data$DateTime <- as.POSIXct(paste(frch2020Data$Date, frch2020Data$time), format="%d/%m/%Y %H:%M:%S")
+frch2020Data$DateTime
 
 
-qplot(DateTime, Calibrated.Value, data = test.frch)+
-  geom_abline(slope = 0.031, intercept = 0.237, col = "red")
+frch2020Data$regression.value <- frch2020Data$Calibrated.Value * 0.032
+
+frch2020.ggplot <- ggplot(data=frch2020Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("French PAR Data")
+
+frch2020.ggplot
+
+#Poker
+poke.2020.url <- "https://drive.google.com/drive/u/2/folders/1udve7khOM2EX0l8BZQK3yehb2HUbwFtR"
+poke2020 <- drive_get(as_id(poke.2020.url))
+test2poke_glist <- drive_ls(poke2020, pattern = "11619_002_002_POKE_EndOfSeason.CSV")
+walk(test2poke_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+poke2020Data <- read.csv("11619_002_002_POKE_EndOfSeason.CSV", 
+                         skip = 9, header = FALSE)
+
+poke2020Data <- poke2020Data[c(1:12681),]
+
+names(poke2020Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+poke2020Data$DateTime <- as.POSIXct(paste(poke2020Data$Date, poke2020Data$time), format="%d/%m/%Y %H:%M:%S")
+poke2020Data$DateTime
+
+
+poke2020Data$regression.value <- poke2020Data$Calibrated.Value * 0.035
+
+poke2020.ggplot <- ggplot(data=poke2020Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("Poker PAR Data 2020")
+
+poke2020.ggplot
+
+#Vault
+vaul.2020.url <- "https://drive.google.com/drive/u/2/folders/1udve7khOM2EX0l8BZQK3yehb2HUbwFtR"
+vaul2020 <- drive_get(as_id(vaul.2020.url))
+test2vaul_glist <- drive_ls(vaul2020, pattern = "11616_005_002_VAUL_EndOfSeason.CSV")
+walk(test2vaul_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+vaul2020Data <- read.csv("11616_005_002_VAUL_EndOfSeason.CSV", 
+                         skip = 9, header = FALSE)
+
+
+vaul2020Data <- vaul2020Data[c(1:12563),]
+names(vaul2020Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+vaul2020Data$DateTime <- as.POSIXct(paste(vaul2020Data$Date, vaul2020Data$time), format="%d/%m/%Y %H:%M:%S")
+vaul2020Data$DateTime
+
+vaul2020Data$regression.value <- vaul2020Data$Calibrated.Value * 0.032
+
+vaul2020.ggplot <- ggplot(data=vaul2020Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("Vault PAR Data 2020")
+
+vaul2020.ggplot
+
+#Moose
+moos.2020.url <- "https://drive.google.com/drive/u/2/folders/1udve7khOM2EX0l8BZQK3yehb2HUbwFtR"
+moos2020 <- drive_get(as_id(moos.2020.url))
+test2moos_glist <- drive_ls(moos2020, pattern = "11617_004_002_MOOS_EndOfSeason.CSV")
+walk(test2moos_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+moos2020Data <- read.csv("11617_004_002_MOOS_EndOfSeason.CSV", 
+                         skip = 9, header = FALSE)
+
+
+
+moos2020Data <- moos2020Data[c(1:12205),]
+
+names(moos2020Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+moos2020Data$regression.value <- moos2020Data$Calibrated.Value * 0.037
+
+moos2020Data$DateTime <- as.POSIXct(paste(moos2020Data$Date, moos2020Data$time), format="%d/%m/%Y %H:%M:%S")
+moos2020Data$DateTime
+
+moos2020.ggplot <- ggplot(data=moos2020Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("Moose PAR Data 2020")
+
+moos2020.ggplot
+
+#Stuart
+strt.2020.url <- "https://drive.google.com/drive/u/2/folders/1udve7khOM2EX0l8BZQK3yehb2HUbwFtR"
+strt2020 <- drive_get(as_id(strt.2020.url))
+test2strt_glist <- drive_ls(strt2020, pattern = "11620_001_002_STRT_EndOfSeason.CSV")
+walk(test2strt_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+strt2020Data <- read.csv("11620_001_002_STRT_EndOfSeason.CSV", 
+                         skip = 9, header = FALSE)
+
+
+
+strt2020Data <- strt2020Data[c(1:11329),]
+names(strt2020Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+strt2020Data$regression.value <- strt2020Data$Calibrated.Value * 0.036
+
+strt2020Data$DateTime <- as.POSIXct(paste(strt2020Data$Date, strt2020Data$time), format="%d/%m/%Y %H:%M:%S")
+strt2020Data$DateTime
+
+strt2020.ggplot <- ggplot(data=strt2020Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "Calibrated PAR sensor values")+
+  ggtitle("Stuart PAR Data 2020")
+
+strt2020.ggplot
+
+
+#All together 
+
+strt2020Data$site <- "strt"
+poke2020Data$site <- "poke"
+moos2020Data$site <- "moos"
+vaul2020Data$site <- "vaul"
+frch2020Data$site <- "frch"
+
+
+all.dates.par.2020 <- rbind(strt2020Data, poke2020Data, moos2020Data, vaul2020Data, frch2020Data)
+
+
+ggplot(data=all.dates.par.2020, aes(y=regression.value, x=DateTime)) +
+  geom_line() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("All sites PAR 2020")+
+  facet_wrap(~site)
+
+write.csv(all.dates.par.2020, file="C:/Users/jacob/OneDrive/Documents/LabLearning/all.dates.par.2021.csv", row.names = FALSE)
+getwd()
+
+
+################################# 2019 ##############################
+
+#French
+
+frch.2019.url <- "https://drive.google.com/drive/u/2/folders/11kWuwCF6pTXYolwYnxcsX6OcYyQeF35z"
+frch2019 <- drive_get(as_id(frch.2019.url))
+test3frch_glist <- drive_ls(frch2019, pattern = "191010_11615_FRCH.CSV")
+walk(test3frch_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+frch2019Data <- read.csv("191010_11615_FRCH.CSV", 
+                         skip = 9, header = FALSE)
+
+frch2019Data <- frch2019Data[c(10:15742),]
+
+names(frch2019Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+frch2019Data$DateTime <- as.POSIXct(paste(frch2019Data$Date, frch2019Data$time), format="%d/%m/%Y %H:%M:%S")
+frch2019Data$DateTime
+
+
+frch2019Data$regression.value <- frch2019Data$Calibrated.Value * 0.031
+
+frch2019.ggplot <- ggplot(data=frch2019Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("French PAR Data 2019")
+
+frch2019.ggplot
+
+#Poker
+poke.2019.url <- "https://drive.google.com/drive/u/2/folders/11kWuwCF6pTXYolwYnxcsX6OcYyQeF35z"
+poke2019 <- drive_get(as_id(poke.2019.url))
+test3poke_glist <- drive_ls(poke2019, pattern = "191017_11619_POKE.CSV")
+walk(test3poke_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+poke2019Data <- read.csv("191017_11619_POKE.CSV", 
+                         skip = 9, header = FALSE)
+
+poke2019Data <- poke2019Data[c(1:14979),]
+
+names(poke2019Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+poke2019Data$DateTime <- as.POSIXct(paste(poke2019Data$Date, poke2019Data$time), format="%d/%m/%Y %H:%M:%S")
+poke2019Data$DateTime
+
+
+poke2019Data$regression.value <- poke2019Data$Calibrated.Value * 0.035
+
+poke2019.ggplot <- ggplot(data=poke2019Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("Poker PAR Data 2019")
+
+poke2019.ggplot
+
+#Vault
+vaul.2019.url <- "https://drive.google.com/drive/u/2/folders/11kWuwCF6pTXYolwYnxcsX6OcYyQeF35z"
+vaul2019 <- drive_get(as_id(vaul.2019.url))
+test3vaul_glist <- drive_ls(vaul2019, pattern = "191017_11616_VAUL.CSV")
+walk(test3vaul_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+vaul2019Data <- read.csv("191017_11616_VAUL.CSV", 
+                         skip = 9, header = FALSE)
+
+
+vaul2019Data <- vaul2019Data[c(1:15340),]
+names(vaul2019Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+vaul2019Data$DateTime <- as.POSIXct(paste(vaul2019Data$Date, vaul2019Data$time), format="%d/%m/%Y %H:%M:%S")
+vaul2019Data$DateTime
+
+vaul2019Data$regression.value <- vaul2019Data$Calibrated.Value * 0.032
+
+vaul2019.ggplot <- ggplot(data=vaul2019Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("Vault PAR Data 2019")
+
+vaul2019.ggplot
+
+#Moose
+moos.2019.url <- "https://drive.google.com/drive/u/2/folders/11kWuwCF6pTXYolwYnxcsX6OcYyQeF35z"
+moos2019 <- drive_get(as_id(moos.2019.url))
+test3moos_glist <- drive_ls(moos2019, pattern = "191022_11617_MOOS.CSV")
+walk(test3moos_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+moos2019Data <- read.csv("191022_11617_MOOS.CSV", 
+                         skip = 9, header = FALSE)
+
+
+
+moos2019Data <- moos2019Data[c(91:16026),]
+
+names(moos2019Data)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+moos2019Data$regression.value <- moos2019Data$Calibrated.Value * 0.037
+
+moos2019Data$DateTime <- as.POSIXct(paste(moos2019Data$Date, moos2019Data$time), format="%d/%m/%Y %H:%M:%S")
+moos2019Data$DateTime
+
+moos2019.ggplot <- ggplot(data=moos2019Data, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("Moose PAR Data 2019")
+
+moos2019.ggplot
+
+#Stuart
+### For some reason there are two light files that will need to be merged.
+
+strt.2019.url <- "https://drive.google.com/drive/u/2/folders/11kWuwCF6pTXYolwYnxcsX6OcYyQeF35z"
+strt2019 <- drive_get(as_id(strt.2019.url))
+
+test3strt.1_glist <- drive_ls(strt2019, pattern = "190521_11620_STRT.CSV")
+walk(test3strt_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+strt2019Data1 <- read.csv("190521_11620_STRT.CSV", 
+                         skip = 9, header = FALSE)
+
+test3strt.2_glist <- drive_ls(strt2019, pattern = "190829_11620_PAR_STRT.CSV")
+walk(test3strt.2_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+strt2019Data2 <- read.csv("190829_11620_PAR_STRT.CSV", 
+                         skip = 9, header = FALSE)
+
+test3strt.3_glist <- drive_ls(strt2019, pattern = "191016_11620_PAR_STRT.CSV")
+walk(test3strt.3_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+strt2019Data3 <- read.csv("191016_11620_PAR_STRT.CSV", 
+                          skip = 9, header = FALSE)
+
+strt2019Data3 <- strt2019Data3[c(1:2778),]
+
+
+strt2019Data1$site <- "strt"
+strt2019Data2$site <- "strt"
+strt2019Data3$site <- "strt"
+strt2019DataMerged <- rbind(strt2019Data1, strt2019Data2, strt2019Data3)
+
+names(strt2019DataMerged)[1:4]= c("Scan.Number", "Date","time", "Calibrated.Value")
+
+strt2019DataMerged$regression.value <- strt2019DataMerged$Calibrated.Value * 0.036
+
+strt2019DataMerged$DateTime <- as.POSIXct(paste(strt2019DataMerged$Date, strt2019DataMerged$time), format="%d/%m/%Y %H:%M:%S")
+strt2019DataMerged$DateTime
+
+strt2019.ggplot <- ggplot(data=strt2019DataMerged, aes(y=regression.value, x=DateTime)) +
+  geom_point() + 
+  labs(x = "Date and Time", y = "Calibrated PAR sensor values")+
+  ggtitle("Stuart PAR Data 2019")
+
+strt2019.ggplot
+
+
+#All together 
+
+strt2019DataMerged$site <- "strt"
+poke2019Data$site <- "poke"
+moos2019Data$site <- "moos"
+vaul2019Data$site <- "vaul"
+frch2019Data$site <- "frch"
+
+
+all.dates.par.2019 <- rbind(strt2019DataMerged, poke2019Data, moos2019Data, vaul2019Data, frch2019Data)
+
+
+ggplot(data=all.dates.par.2019, aes(y=regression.value, x=DateTime)) +
+  geom_line() + 
+  labs(x = "Date and Time", y = "PAR (µmol of photons m-2 s-1)")+
+  ggtitle("All sites PAR 2019")+
+  facet_wrap(~site)
+
+
+
+
 
 
 
