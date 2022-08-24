@@ -1,0 +1,371 @@
+### Jacob Adams
+### Full DoD Air Pressure Record Script
+### 7/20/2022
+
+#Packages I think I might perhaps maybe need...
+library(ggpubr)
+library(anytime)
+library(googlesheets4)
+library(ggpmisc)
+library(plyr)
+
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+
+library(zoo)
+library(xts)
+library(forecast)
+library(googledrive)
+library(streamMetabolizer)
+library(readr)
+
+dev.off()
+##### 2019 #####
+
+#STRT 2019
+strt.2019.air.P <- "https://drive.google.com/drive/u/1/folders/12-av--A9_rqcyvwOl9EiB0MSZdmWnPcj"
+strt_19.ap <- drive_get(as_id(strt.2019.air.P))
+strt_19.ap_glist <- drive_ls(strt_19.ap, pattern = "191016_20005934_STRT_ATM_0.csv")
+walk(strt_19.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+strt.ap.2019.Data <- read.csv("191016_20005934_STRT_ATM_0.csv",
+                              skip = 1, header = TRUE)
+strt.ap.2019.Data$DateTime <- strptime(strt.ap.2019.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p")
+
+strt.ap.2019.Data$air.pressure.mbar <- strt.ap.2019.Data$Abs.Pres..kPa..LGR.S.N..20005934..SEN.S.N..20005934..LBL..P. * 10
+
+
+
+
+
+#MOOS
+moos.2019.air.P.url <- "https://drive.google.com/drive/u/1/folders/12-av--A9_rqcyvwOl9EiB0MSZdmWnPcj"
+moos_19.ap <- drive_get(as_id(moos.2019.air.P.url))
+moos_19.ap_glist <- drive_ls(moos_19.ap, pattern = "191022_10710340_MOOS_ATM.csv")
+walk(moos_19.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+moos.ap.2019.Data <- read.csv("191022_10710340_MOOS_ATM.csv",
+                              skip = 1, header = TRUE)
+moos.ap.2019.Data$DateTime <- as.POSIXct(strptime(moos.ap.2019.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+moos.ap.2019.Data$air.pressure.mbar <- moos.ap.2019.Data$Abs.Pres..kPa..LGR.S.N..10710340..SEN.S.N..10710340..LBL..P. * 10
+
+
+#POKE
+poke.2019.air.P.url <- "https://drive.google.com/drive/u/1/folders/12-av--A9_rqcyvwOl9EiB0MSZdmWnPcj"
+poke_19.ap <- drive_get(as_id(poke.2019.air.P.url))
+poke_19.ap_glist <- drive_ls(poke_19.ap, pattern = "191017_20005936_POKE_ATM.csv")
+walk(poke_19.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+poke.ap.2019.Data <- read.csv("191017_20005936_POKE_ATM.csv",
+                              skip = 1, header = TRUE)
+poke.ap.2019.Data$DateTime <- as.POSIXct(strptime(poke.ap.2019.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+poke.ap.2019.Data$DateTime <- lubridate::round_date(poke.ap.2019.Data$DateTime, "15 minutes") 
+
+
+poke.ap.2019.Data$air.pressure.mbar <- poke.ap.2019.Data$Abs.Pres..kPa..LGR.S.N..20005936..SEN.S.N..20005936..LBL..P. * 10
+
+
+
+#FRCH
+frch.2019.air.P.url <- "https://drive.google.com/drive/u/1/folders/12-av--A9_rqcyvwOl9EiB0MSZdmWnPcj"
+frch_19.ap <- drive_get(as_id(frch.2019.air.P.url))
+frch_19.ap_glist <- drive_ls(frch_19.ap, pattern = "191010_10710335_FRCH_ATM.csv")
+walk(frch_19.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+frch.ap.2019.Data <- read.csv("191010_10710335_FRCH_ATM.csv",
+                              skip = 1, header = TRUE)
+frch.ap.2019.Data$DateTime <- as.POSIXct(strptime(frch.ap.2019.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+frch.ap.2019.Data$DateTime <- lubridate::round_date(frch.ap.2019.Data$DateTime, "15 minutes")
+
+frch.ap.2019.Data$air.pressure.mbar <- frch.ap.2019.Data$Abs.Pres..kPa..LGR.S.N..10710335..SEN.S.N..10710335..LBL..P. * 10
+
+
+
+#VAUL
+vaul.2019.air.P.url <- "https://drive.google.com/drive/u/1/folders/12-av--A9_rqcyvwOl9EiB0MSZdmWnPcj"
+vaul_19.ap <- drive_get(as_id(vaul.2019.air.P.url))
+vaul_19.ap_glist <- drive_ls(vaul_19.ap, pattern = "191017_20574425_VAUL_ATM.csv")
+walk(vaul_19.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+vaul.ap.2019.Data <- read.csv("191017_20574425_VAUL_ATM.csv",
+                              skip = 1, header = TRUE)
+vaul.ap.2019.Data$DateTime <- as.POSIXct(strptime(vaul.ap.2019.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+vaul.ap.2019.Data$DateTime <- lubridate::round_date(vaul.ap.2019.Data$DateTime, "15 minutes")
+
+vaul.ap.2019.Data$air.pressure.mbar <- vaul.ap.2019.Data$Abs.Pres..kPa..LGR.S.N..20574425..SEN.S.N..20574425. * 10
+
+
+###### 2020 #####
+
+#MOOS 2020
+moos.2020.air.P <- "https://drive.google.com/drive/u/1/folders/10iEEQn5LhX3sxD2rcwozzAjuxmSuWKuh"
+moos_20.ap <- drive_get(as_id(moos.2020.air.P))
+moos_20.ap_glist <- drive_ls(moos_20.ap, pattern = "20574421_MOOS_atmo.csv")
+walk(moos_20.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+moos.ap.2020.Data <- read.csv("20574421_MOOS_atmo.csv",
+                              skip = 1, header = TRUE)
+moos.ap.2020.Data$DateTime <- as.POSIXct(strptime(moos.ap.2020.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+moos.ap.2020.Data$air.pressure.mbar <- moos.ap.2020.Data$Abs.Pres..kPa..LGR.S.N..20574421..SEN.S.N..20574421. * 10
+
+#STRT 2020
+####### 2020 data looks BAD, dates all wrong and pressure does not line up with other sites. ######
+
+        # strt.2020.air.P <- "https://drive.google.com/drive/u/1/folders/1TWj16hvYu78dTk_aiSKyu2f0yl0KlibI"
+        # strt_20.ap <- drive_get(as_id(strt.2020.air.P))
+        # strt_20.ap_glist <- drive_ls(strt_20.ap, pattern = "20005934_STRT_ATMO.csv")
+        # walk(strt_20.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+        # strt.ap.2020.Data <- read.csv("20005934_STRT_ATMO.csv",
+        #                               skip = 1, header = TRUE)
+        # strt.ap.2020.Data$DateTime <- as.POSIXct(strptime(strt.ap.2020.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+        # 
+        # #already in Mbar
+        # strt.ap.2020.Data$air.pressure.mbar <- strt.ap.2020.Data$Abs.Pres..mbar..LGR.S.N..20005934..SEN.S.N..20005934..LBL..P. * 1
+
+#######
+
+
+#STRT 2020
+#bad atmo in 2021... Go off MOOS and adjust for elevation
+
+#strt elevation: 250 meters, 820 feet
+#Moos elevation: 175 meters, 574 feet
+
+#calc pressure at sea level
+
+
+
+#air pressure at sea level in mmHg
+#formula from https://keisan.casio.com/exec/system/1224575267
+
+moos.ap.2020.Data$mmHg.sea.level <- 10 * moos.ap.2020.Data$Abs.Pres..kPa..LGR.S.N..20574421..SEN.S.N..20574421.*((1-(0.0065*175)/(moos.ap.2020.Data$Temp..Â.C..LGR.S.N..20574421..SEN.S.N..20574421. + (0.0065*175) +273.15))^(-5.257)) / 1.33322387415
+
+#air pressure at moos elevation
+
+moos.ap.2020.Data$strt.air.pressure.mbar <- (moos.ap.2020.Data$mmHg.sea.level -(2.5* 820/100))* 1.33322 
+
+
+
+
+
+
+
+
+
+#FRCH 2020
+frch.2020.air.P <- "https://drive.google.com/drive/u/1/folders/1-xZLou63OJTvw23xhWPO26x8VcZuv-xK"
+frch_20.ap <- drive_get(as_id(frch.2020.air.P))
+frch_20.ap_glist <- drive_ls(frch_20.ap, pattern = "20005933_FRCH_atmo.csv")
+walk(frch_20.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+frch.ap.2020.Data <- read.csv("20005933_FRCH_atmo.csv",
+                              skip = 1, header = TRUE)
+frch.ap.2020.Data$DateTime <- as.POSIXct(strptime(frch.ap.2020.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+frch.ap.2020.Data$air.pressure.mbar <- frch.ap.2020.Data$Abs.Pres..kPa..LGR.S.N..20005933..SEN.S.N..20005933..LBL..P. * 10
+
+
+
+#VAUL 2020
+vaul.2020.air.P <- "https://drive.google.com/drive/u/1/folders/1nZzsTzSxZFCWF2GYsH6_HnRdi2iiLofK"
+vaul_20.ap <- drive_get(as_id(vaul.2020.air.P))
+vaul_20.ap_glist <- drive_ls(vaul_20.ap, pattern = "20574425_VAUL_atmo.csv")
+walk(vaul_20.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+vaul.ap.2020.Data <- read.csv("20574425_VAUL_atmo.csv",
+                              skip = 1, header = TRUE)
+vaul.ap.2020.Data$DateTime <- as.POSIXct(strptime(vaul.ap.2020.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+vaul.ap.2020.Data$air.pressure.mbar <- vaul.ap.2020.Data$Abs.Pres..kPa..LGR.S.N..20574425..SEN.S.N..20574425. * 10
+
+
+
+#POKE 2020
+poke.2020.air.P <- "https://drive.google.com/drive/u/1/folders/1CrINE0O9s7ILAUZkc9jguxHAvvTOD2NR"
+poke_20.ap <- drive_get(as_id(poke.2020.air.P))
+poke_20.ap_glist <- drive_ls(poke_20.ap, pattern = "20005936_POKE_atmo.csv")
+walk(poke_20.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+poke.ap.2020.Data <- read.csv("20005936_POKE_atmo.csv",
+                              skip = 1, header = TRUE)
+poke.ap.2020.Data$DateTime <- as.POSIXct(strptime(poke.ap.2020.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+poke.ap.2020.Data$air.pressure.mbar <- poke.ap.2020.Data$Abs.Pres..kPa..LGR.S.N..20005936..SEN.S.N..20005936..LBL..P. * 10
+
+
+###### 2021 #####
+
+#STRT 2021
+strt.2021.air.P <- "https://drive.google.com/drive/u/1/folders/1-om0nU42U8fNmeWtBrhM8WQTbGqBW8RN"
+strt_21.ap <- drive_get(as_id(strt.2021.air.P))
+strt_21.ap_glist <- drive_ls(strt_21.ap, pattern = "20005934_STRT_ATMO_210930.csv")
+walk(strt_21.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+strt.ap.2021.Data <- read.csv("20005934_STRT_ATMO_210930.csv",
+                              skip = 1, header = TRUE)
+strt.ap.2021.Data$DateTime <- as.POSIXct(strptime(strt.ap.2021.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+#already in Mbar
+strt.ap.2021.Data$air.pressure.mbar <- strt.ap.2021.Data$Abs.Pres..mbar..LGR.S.N..20005934..SEN.S.N..20005934..LBL..P. * 1
+
+
+#MOOS 2021
+#No atmo in 2021... Go off strt and adjust for elevation
+
+#strt elevation: 250 meters
+#Moos elevation: 175 meters, 574 feet
+
+#calc pressure at sea level
+    
+    #air pressure at sea level in mmHg
+    
+strt.ap.2021.Data$mmHg.sea.level <- strt.ap.2021.Data$Abs.Pres..mbar..LGR.S.N..20005934..SEN.S.N..20005934..LBL..P.*((1-(0.0065*250)/(strt.ap.2021.Data$Temp..Â.C..LGR.S.N..20005934..SEN.S.N..20005934..LBL..T. + (0.0065*250) +273.15))^(-5.257)) / 1.33322387415
+
+    #air pressure at moos elevation
+
+strt.ap.2021.Data$moos.air.pressure.mbar <- (strt.ap.2021.Data$mmHg.sea.level -(2.5* 574/100))* 1.33322
+
+
+
+#FRCH 2021
+#File online only has one point... might not exist
+#Lets calculate from STRT as well
+
+  #air pressure at f erchlevation
+
+strt.ap.2021.Data$frch.air.pressure.mbar <- (strt.ap.2021.Data$mmHg.sea.level -(2.5* 601/100)) * 1.33322
+
+
+
+#VAUL 2021
+vaul.2021.air.P <- "https://drive.google.com/drive/u/1/folders/1F80dynCpIo87e5EalwjNprze5UnLiomX"
+vaul_21.ap <- drive_get(as_id(vaul.2021.air.P))
+vaul_21.ap_glist <- drive_ls(vaul_21.ap, pattern = "20574425_VAUL_atmo.csv")
+walk(vaul_21.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+vaul.ap.2021.Data <- read.csv("20574425_VAUL_atmo.csv",
+                              skip = 1, header = TRUE)
+vaul.ap.2021.Data$DateTime <- as.POSIXct(strptime(vaul.ap.2021.Data$Date.Time..GMT.08.00, "%m/%d/%y %I:%M:%S %p"))
+
+vaul.ap.2021.Data$air.pressure.mbar <- vaul.ap.2021.Data$Abs.Pres..kPa..LGR.S.N..20574425..SEN.S.N..20574425. * 10
+
+
+
+#POKE 2021
+#going off of caribou pressure 
+
+poke.2021.air.P <- "https://drive.google.com/drive/u/1/folders/1rOGiMGGMYzOoDcNQoJATxHARqR8Y1F1m"
+poke_21.ap <- drive_get(as_id(poke.2021.air.P))
+poke_21.ap_glist <- drive_ls(poke_21.ap, pattern = "caribou.2021.atmo.csv")
+walk(poke_21.ap_glist$id, ~ drive_download(as_id(.x), overwrite = TRUE))
+poke.ap.2021.Data <- read.csv("caribou.2021.atmo.csv",
+                              skip = 1, header = TRUE)
+poke.ap.2021.Data$DateTime <- as.POSIXct(poke.ap.2021.Data$X2021.06.01.00.01.00)
+
+poke.ap.2021.Data$air.pressure.mbar <- poke.ap.2021.Data$X99.90622* 10
+
+
+#Stitch them together
+
+# Poke:
+poke.ap.2019.Data.2 <- na.omit(poke.ap.2019.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+poke.ap.2020.Data.2 <- na.omit(poke.ap.2020.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+poke.ap.2021.Data.2 <- na.omit(poke.ap.2021.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+poke.ap.2021.Data.2$DateTime <- lubridate::round_date(poke.ap.2021.Data.2$DateTime, "15 minutes")
+poke.ap.2021.Data.2 <- aggregate( air.pressure.mbar ~ DateTime, poke.ap.2021.Data.2, mean)
+
+poke.ap.data <- rbind(poke.ap.2019.Data.2,poke.ap.2020.Data.2, poke.ap.2021.Data.2)
+
+poke.ap.data$air.pressure.mbar <- as.numeric(poke.ap.data$air.pressure.mbar)
+
+
+# Vaul: 
+
+vaul.ap.2019.Data.2 <- na.omit(vaul.ap.2019.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+vaul.ap.2020.Data.2 <- na.omit(vaul.ap.2020.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+vaul.ap.2021.Data.2 <- na.omit(vaul.ap.2021.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+vaul.ap.data <- rbind(vaul.ap.2019.Data.2, vaul.ap.2020.Data.2, vaul.ap.2021.Data.2)
+
+vaul.ap.data$air.pressure.mbar <- as.numeric(vaul.ap.data$air.pressure.mbar)
+
+plot(vaul.ap.data$DateTime, vaul.ap.data$air.pressure.mbar)
+
+
+# Moos:
+
+moos.ap.2019.Data.2 <- na.omit(moos.ap.2019.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+moos.ap.2020.Data.2 <- na.omit(moos.ap.2020.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+moos.ap.2021.Data.2 <- na.omit(strt.ap.2021.Data) %>%
+  select(DateTime, moos.air.pressure.mbar) 
+
+moos.ap.2021.Data.2 <- moos.ap.2021.Data.2 %>% dplyr::rename(air.pressure.mbar = moos.air.pressure.mbar)
+
+
+moos.ap.data <- rbind(moos.ap.2019.Data.2,moos.ap.2020.Data.2, moos.ap.2021.Data.2)
+
+moos.ap.data$air.pressure.mbar <- as.numeric(moos.ap.data$air.pressure.mbar)
+
+plot(moos.ap.data$DateTime, moos.ap.data$air.pressure.mbar)
+
+
+# Frch:
+
+frch.ap.2019.Data.2 <- na.omit(frch.ap.2019.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+frch.ap.2020.Data.2 <- na.omit(frch.ap.2020.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+frch.ap.2021.Data.2 <- na.omit(strt.ap.2021.Data) %>%
+  select(DateTime, frch.air.pressure.mbar) 
+
+frch.ap.2021.Data.2 <- frch.ap.2021.Data.2 %>% dplyr::rename(air.pressure.mbar = frch.air.pressure.mbar)
+
+
+frch.ap.data <- rbind(frch.ap.2019.Data.2,frch.ap.2020.Data.2, frch.ap.2021.Data.2)
+
+frch.ap.data$air.pressure.mbar <- as.numeric(frch.ap.data$air.pressure.mbar)
+
+plot(frch.ap.data$DateTime, frch.ap.data$air.pressure.mbar)
+
+
+
+# Strt:
+# 2020 data looks BAD, dates all wrong and pressure does not line up with other sites. use pressure convereted from MOOS
+
+strt.ap.2019.Data.2 <- na.omit(strt.ap.2019.Data) %>%
+  select(DateTime, air.pressure.mbar)
+
+
+strt.ap.2020.Data.2 <- na.omit(moos.ap.2020.Data) %>%
+  select(DateTime, strt.air.pressure.mbar)
+
+strt.ap.2021.Data.2 <- na.omit(strt.ap.2021.Data) %>%
+  select(DateTime, air.pressure.mbar) 
+
+strt.ap.2020.Data.2 <- strt.ap.2020.Data.2 %>% dplyr::rename(air.pressure.mbar = strt.air.pressure.mbar)
+
+
+
+strt.ap.data <- rbind(strt.ap.2019.Data.2,strt.ap.2020.Data.2, strt.ap.2021.Data.2)
+
+strt.ap.data$datetimeAK <- as.POSIXct(strt.ap.data$DateTime)
+
+strt.ap.data$air.pressure.mbar <- as.numeric(strt.ap.data$air.pressure.mbar)
+
+plot(strt.ap.data$DateTime, strt.ap.data$air.pressure.mbar)
+
