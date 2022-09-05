@@ -1,0 +1,1038 @@
+options(useFancyQuotes = FALSE)
+library("data.table")
+library("unitted")
+library("dplyr")
+library("tidyr")
+library("ggplot2")
+library("Hmisc")
+library("rstan")
+library("rstantools")
+library("rstudioapi")
+library("installr")
+library("plyr")
+library("zoo")
+library("xts")
+library("forecast")
+library("imputeTS")
+library("lubridate")
+library("pracma")
+library("streamMetabolizer")
+library("dataRetrieval")
+library("tidyverse")
+library("ggpubr")
+library("stringr")
+library("gridExtra")
+library("grid")
+library("cowplot")
+library("rstan")
+library("rstantools")
+library("stringi")
+library("scales")
+library("ggforce")
+library("namespace")
+library("caret")
+
+#remotes::install_github('appling/unitted')
+#remotes::install_github("USGS-R/streamMetabolizer", force = TRUE)
+
+getwd()
+setwd("C:/R/metabolism_Mengdi/bayes_test/0831")
+
+#input.ltmod USING MODELED PAR
+#STEP 1.1: Get the list of input csv file (merged input.ltmod)
+input.ltmod_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltmod", 
+                          pattern = "csv", full.names = T, recursive = F)
+
+input.ltmod_csv<-lapply(input.ltmod_files, read.csv)
+
+names(input.ltmod_csv)<- gsub(pattern = "_modlt.csv", replacement = "",
+                        x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltmod", pattern = "csv", full.names = F),
+                        fixed = F)
+
+input.ltmod_csv2<- list(input_csv$BN_CONT_pool_up, input_csv$BN_CONT_pool_down)
+names(input.ltmod_csv2)<- c("BN_CONT_pool_up", "BN_CONT_pool_down")
+
+input.ltmod_csv$BN_CONT_pool_up<- NULL
+input.ltmod_csv$BN_CONT_pool_down<- NULL
+
+#Get model specs
+model.specs<- read.csv(file = "c:\\R\\metabolism_Mengdi\\dataprep_new\\dataprep_04182020\\modelspecs_sttime.csv", stringsAsFactors=FALSE)
+#model.specs<- model.specs[,-1]
+colnames(model.specs)[1]<- "model.id"
+model.specs$model.id<- as.character(model.specs$model.id)
+
+k_bin.q<- read.csv(file = "c:\\R\\metabolism_Mengdi\\bayes_test\\kqbin_uniformed.csv", stringsAsFactors=FALSE)
+colnames(k_bin.q)[1]<- "site"
+k_bin.q$site<- as.character(k_bin.q$site)
+
+model.order<- data.frame(c(names(input_csv), names(input_csv2)))
+colnames(model.order)<- "model.id"
+#write.csv(x=model.order, row.names = T, file = "model.id_order.csv")
+
+#Check
+#allmodels.specs<-as.data.frame(table(model.specs$model.id))
+#allmodels.kq<- as.data.frame(table(k_bin.q$model.id))
+
+#Model 1
+#Bayesian Model for over 8d dataset(BN_pool_up and BN_pool_down need to be excluded, so although 22 datasets)
+#For datasets >7 d: Check for linearity of estimated k vs. Q, if Q vs. k is not linear, use ânumericâ approach to binning Q
+
+###############################################
+#EDIT THE plot_DO_preds function (breaks= spacing <= 2mons)
+plot_DO_preds_ed <- function(
+  DO_preds, y_var=c('conc','pctsat','ddodt'), 
+  style=c('ggplot2','dygraphs'),
+  y_lim=list(conc=c(NA,NA), pctsat=c(NA,NA), ddodt=c(NA,NA)),
+  date_start = NA, date_end = NA, use_saved = TRUE # these inherited from predict_DO
+) {
+  
+  if(is(DO_preds, 'metab_model')) {
+    DO_preds <- predict_DO(DO_preds, date_start = date_start, date_end = date_end, use_saved = use_saved)
+  }
+  
+  #Type 1: group: 2016SS, 2016FW, 2017SS, 2017FW,..., every 6 mons
+  #DO_preds<- predict_DO(mle_fit)
+  #d<-DO_preds
+  #d$grp<- paste0(as.numeric(year(d$solar.time)), ifelse(as.numeric(month(d$solar.time))> 6, "FW", "SS"), collapse = NULL)
+  
+  #DO_preds$grp<- paste0(as.numeric(year(DO_preds$solar.time)), ifelse(as.numeric(month(DO_preds$solar.time))> 6, "FW", "SS"), collapse = NULL)
+  
+  #Type 2: group: diff<=2 mons(86400 min), preferred  
+  #2months: 2*30d/m*24h/d*60min/h=86400
+  #60min/h*24h/d*89d=128160 
+  #d<-DO_preds
+  #idx <- c(10, diff(DO_preds$solar.time))
+  #i2 <- c(1,which(idx > 128160), nrow(DO_preds)+1)
+  #d$grp <- rep(1:length(diff(i2)), diff(i2))
+  #d$grp<- as.numeric(d$grp)
+  
+  #DO_preds$grp <- as.numeric(rep(1:length(diff(c(1,which(c(10, diff(DO_preds$solar.time)) > 86400), nrow(DO_preds)+1))), diff(c(1,which(c(10, diff(DO_preds$solar.time)) > 86400), nrow(DO_preds)+1))))
+  #Type 3: group: diff<=1 mons(43200 min), preferred 
+  DO_preds$grp <- as.numeric(rep(1:length(diff(c(1,which(c(10, diff(DO_preds$solar.time)) > 43200), nrow(DO_preds)+1))), diff(c(1,which(c(10, diff(DO_preds$solar.time)) > 43200), nrow(DO_preds)+1))))
+  
+  
+  
+  
+  style <- match.arg(style)
+  y_var <- match.arg(y_var, several.ok=TRUE)
+  
+  params <- list(
+    xlab='Local time',
+    ylab='Predictions (lines) and observations (points)',
+    colors=list(conc=c('#CE9C59', '#A64B00','#FF7400'), 
+                pctsat=c('#7CA586','#007929','#23BC47'), 
+                ddodt=c('#4A5869','#05326D','#4282D3'))
+  )
+  
+  DO.obs <- DO.pure <- DO.mod <- DO.sat <- '.dplyr.var'
+  DO_preds_conc <- mutate(
+    DO_preds[-1,], as='conc', var='DO (mg/L)', lab='DO (mg/L)',
+    col.pure=params$colors$conc[1], col.mod=params$colors$conc[2], col.obs=params$colors$conc[3], 
+    pure=if(exists('DO.pure', DO_preds)) DO.pure else NA,
+    mod=DO.mod, 
+    obs=DO.obs) %>%
+    mutate(
+      pure = ifelse(diff(DO_preds$date)==0, pure, NA),
+      mod = ifelse(diff(DO_preds$date)==0, mod, NA),
+      obs = ifelse(diff(DO_preds$date)==0, obs, NA))
+  
+  DO_preds_pctsat <- 
+    mutate(
+      DO_preds[-1,], as='pctsat', var='DO (% sat)', lab='DO (% sat)',
+      col.pure=params$colors$pctsat[1], col.mod=params$colors$pctsat[2], col.obs=params$colors$pctsat[3], 
+      pure=if(exists('DO.pure', DO_preds)) 100*DO.pure/DO.sat else NA, 
+      mod=100*DO.mod/DO.sat, 
+      obs=100*DO.obs/DO.sat) %>%
+    mutate(
+      pure = ifelse(diff(DO_preds$date)==0, pure, NA),
+      mod = ifelse(diff(DO_preds$date)==0, mod, NA),
+      obs = ifelse(diff(DO_preds$date)==0, obs, NA))
+  
+  DO_preds_ddodt <- 
+    mutate(
+      DO_preds[-1,], as='ddodt', var='dDO/dt (mg/L/d)', lab='dDO/dt~(mg~L^-1~d^-1)',
+      col.pure=params$colors$ddodt[1], col.mod=params$colors$ddodt[2], col.obs=params$colors$ddodt[3], 
+      pure = if(exists('DO.pure', DO_preds)) diff(DO_preds$DO.pure)/as.numeric(diff(DO_preds$solar.time), units="days") else NA,
+      mod = diff(DO_preds$DO.mod)/as.numeric(diff(DO_preds$solar.time), units="days"),
+      obs = diff(DO_preds$DO.obs)/as.numeric(diff(DO_preds$solar.time), units="days")) %>%
+    mutate(
+      pure = ifelse(diff(DO_preds$date)==0, pure, NA),
+      mod = ifelse(diff(DO_preds$date)==0, mod, NA),
+      obs = ifelse(diff(DO_preds$date)==0, obs, NA))
+  
+  var <- '.dplyr.var'
+  DO_preds_all <- bind_rows(DO_preds_conc, DO_preds_pctsat, DO_preds_ddodt) %>%
+    mutate(var=ordered(var, c(conc='DO (mg/L)', pctsat='DO (% sat)', ddodt='dDO/dt (mg/L/d)')[y_var]))
+  
+  plot_out <- switch(
+    style,
+    'ggplot2' = {
+      if(!requireNamespace("ggplot2", quietly=TRUE))
+        stop("call install.packages('ggplot2') before plotting with style='ggplot2'")
+      
+      . <- solar.time <- pure <- mod <- date <- grp <- col.pure <- col.mod <- col.obs <- obs <- '.ggplot.var'
+      preds_ggplot <- v(DO_preds_all) %>%
+        filter(as %in% y_var)
+      if('conc' %in% names(y_lim)) {
+        lim <- y_lim[['conc']][1]; if(!is.na(lim)) preds_ggplot <- filter(preds_ggplot, as != 'conc' | (pure >= lim & mod >= lim & obs >= lim))
+        lim <- y_lim[['conc']][2]; if(!is.na(lim)) preds_ggplot <- filter(preds_ggplot, as != 'conc' | (pure <= lim & mod <= lim & obs <= lim))
+      }
+      if('pctsat' %in% names(y_lim)) {
+        lim <- y_lim[['pctsat']][1]; if(!is.na(lim)) preds_ggplot <- filter(preds_ggplot, as != 'pctsat' | (pure >= lim & mod >= lim & obs >= lim))
+        lim <- y_lim[['pctsat']][2]; if(!is.na(lim)) preds_ggplot <- filter(preds_ggplot, as != 'pctsat' | (pure <= lim & mod <= lim & obs <= lim))
+      }
+      if('ddodt' %in% names(y_lim)) {
+        lim <- y_lim[['ddodt']][1]; if(!is.na(lim)) preds_ggplot <- filter(preds_ggplot, as != 'ddodt' | (pure >= lim & mod >= lim & obs >= lim))
+        lim <- y_lim[['ddodt']][2]; if(!is.na(lim)) preds_ggplot <- filter(preds_ggplot, as != 'ddodt' | (pure <= lim & mod <= lim & obs <= lim))
+      }
+      g <- ggplot2::ggplot(preds_ggplot, ggplot2::aes(x=solar.time, group=grp, inherit.aes = FALSE))
+      # optional (only applies to sim models): 'pure' lines
+      if(any(!is.na(preds_ggplot$pure))) g <- g + ggplot2::geom_line(ggplot2::aes(y=pure, color=col.pure), size=0.8, na.rm=TRUE)
+      g +ggplot2::geom_point(ggplot2::aes(y=obs, color=col.obs), alpha=0.6, na.rm=TRUE) +
+        ggplot2::geom_line(ggplot2::aes(y=mod, color=col.mod, group=grp), size=0.8, na.rm=TRUE) +
+        ggplot2::scale_color_identity(guide='none') +
+        ggplot2::theme_bw() + 
+        ggplot2::facet_grid(var ~ grp, scales="free") +
+        #        ggplot2::facet_grid_paginate(var ~ grp, scales="free", ncol = 2, nrow = 3, page=1) +
+        ggplot2::scale_x_datetime(labels = date_format("%Y/%m/%d")) +
+        ggplot2::xlab(params$xlab) + ggplot2::ylab(params$ylab)+
+        ggplot2::theme(plot.title = element_text(size = 8, face = "bold"),
+                       axis.title.x = element_text(size = 8),
+                       axis.text = element_text(size= 5))
+      
+    },
+    'dygraphs' = {
+      if(!requireNamespace("dygraphs", quietly=TRUE))
+        stop("call install.packages('dygraphs') before plotting with style='dygraphs'")
+      if(!requireNamespace("xts", quietly=TRUE))
+        stop("call install.packages('xts') before plotting with style='dygraphs'")
+      
+      . <- '.dplyr.var'
+      preds_xts <- v(DO_preds_all) %>%
+        filter(as %in% y_var) %>%
+        arrange(solar.time) %>%
+        group_by(grp) %>%
+        do(., {
+          out <- .[c(seq_len(nrow(.)),nrow(.)),]
+          out[nrow(.)+1,c('pure','mod','obs')] <- NA
+          out
+        }) %>%
+        ungroup()
+      
+      prep_dygraph <- function(y_var) { 
+        . <- solar.time <- grp <- pure <- mod <- obs <- '.dplyr.var'
+        prepped <- preds_xts %>% 
+          filter(as==y_var) %>% 
+          select(pure,mod,obs,solar.time,grp) %>%
+          mutate(solar.time=lubridate::force_tz(solar.time, Sys.getenv("TZ"))) %>% # dygraphs makes some funky tz assumptions. this seems to help.
+          xts::xts(x=select(., -c(solar.time,grp)), order.by=.$solar.time, unique=FALSE, tzone=Sys.getenv("TZ"))
+        if(all(is.na(prepped[,'pure']))) prepped <- prepped[,c('mod','obs')]
+        prepped
+      }
+      if(length(y_var) > 1) {
+        y_var <- y_var[1]
+        warning("can only plot one dygraph y_var at a time for now; plotting ", y_var)
+      }
+      y_var_long <- preds_xts %>% filter(as==y_var) %>% slice(1) %>% .[['var']] %>% as.character()
+      y_var_col <- params$colors[[y_var]]
+      dat <- prep_dygraph(y_var)
+      ymin <- max(c(min(c(unclass(dat)), na.rm=TRUE), y_lim[[y_var]][1]), na.rm=TRUE)
+      ymax <- min(c(max(c(unclass(dat)), na.rm=TRUE), y_lim[[y_var]][2]), na.rm=TRUE)
+      d <- dygraphs::dygraph(dat, xlab=params$xlab, ylab=y_var_long, group='plot_DO_preds')
+      if(ncol(dat) == 3) d <- d %>% dygraphs::dySeries('pure', drawPoints = FALSE, label=paste0("Pure ", y_var_long), color=y_var_col[1])
+      d %>% dygraphs::dySeries('mod', drawPoints = FALSE, label=paste0("Modeled ", y_var_long), color=y_var_col[2]) %>%
+        dygraphs::dySeries('obs', drawPoints = TRUE, strokeWidth=0, label=paste0("Observed ", y_var_long), color=y_var_col[3]) %>%
+        dygraphs::dyAxis('y', valueRange=(c(ymin,ymax)+(ymax-ymin)*c(-0.05,0.15))) %>%
+        dygraphs::dyOptions(colorSaturation=1) %>%
+        dygraphs::dyLegend(labelsSeparateLines = TRUE, width=300) %>%
+        dygraphs::dyRangeSelector(height = 20)
+    }
+  )
+  
+  plot_out
+}
+
+###############################################
+#STEP 1.2: Choose a model structure for ltmod#
+bayes_name_binp_lin <- mm_name(
+  type='bayes', pool_K600='binned', 
+  err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE, 
+  ode_method='trapezoid')
+bayes_name_binp_lin
+
+#REF
+#https://mc-stan.org/misc/warnings.html#tail-ess
+#https://github.com/USGS-R/streamMetabolizer/issues/381
+#https://rdrr.io/github/USGS-R/streamMetabolizer/src/R/metab_bayes.R
+# run Stan
+#if(verbose) message("sampling Stan model")
+#consolelog <- capture.output(
+#  runstan_out <- rstan::sampling(
+#    object=stan_mobj,
+#    data=data_list,
+#    pars=params_out,
+#    include=TRUE,
+#    chains=n_chains,
+#    warmup=burnin_steps,
+#    iter=saved_steps+burnin_steps,
+#    thin=thin_steps,
+#    init="random",
+#    verbose=verbose,
+#    open_progress=FALSE,
+#    cores=n_cores),
+#  split=verbose)
+
+if (dir.exists(file.path(getwd(), "prediction"))){} else {
+  dir.create(file.path(getwd(), "prediction"))}
+if (dir.exists(file.path(getwd(), "prediction_plot"))){} else {
+  dir.create(file.path(getwd(), "prediction_plot"))}
+if (dir.exists(file.path(getwd(), "mcmc"))){} else {
+  dir.create(file.path(getwd(), "mcmc"))}
+if (dir.exists(file.path(getwd(), "kqcheck"))){} else {
+  dir.create(file.path(getwd(), "kqcheck"))}
+if (dir.exists(file.path(getwd(), "errorcheck"))){} else {
+  dir.create(file.path(getwd(), "errorcheck"))}
+if (dir.exists(file.path(getwd(), "bayes_binnedk_plot"))){} else {
+  dir.create(file.path(getwd(), "bayes_binnedk_plot"))}
+if (dir.exists(file.path(getwd(), "bayes_linpooledk_plot"))){} else {
+  dir.create(file.path(getwd(), "bayes_linpooledk_plot"))}
+
+bayes.ltmod.function<- function(inputdt){
+  scenario<-"appling.default.ltmod"
+  inputdt<- as.data.frame(inputdt)
+  inputdt$solar.time<- as.POSIXct(strptime(inputdt$solar.time, "%Y-%m-%d %H:%M:%S",  tz="UTC"))
+  nm<- as.character(inputdt$fname_merged[1])
+  siteinfo<- gsub(pattern = "_up|_down", replacement = "", x=nm, fixed = F)
+  inputdt<-inputdt[, -c(ncol(inputdt))]
+  sub.specs<- data.frame(filter(model.specs, model.id==nm))
+  k.specs<- data.frame(filter(k_bin.q, site==siteinfo))
+  brks<- k.specs$bins_Q.bounds
+  bayes_specs<- specs(model_name= bayes_name_binp_lin, keep_mcmcs = T, keep_mcmc_data = F,
+                      day_start = sub.specs$st_merged , day_end = sub.specs$ed_merged, 
+                      GPP_daily_mu= 6 , ER_daily_mu = -7, GPP_daily_sigma= 6, ER_daily_sigma=7,
+                      GPP_daily_lower=0, ER_daily_upper=0,
+                      K600_lnQ_nodes_centers= log(brks),
+                      K600_lnQ_nodes_meanlog= log(k.specs$K.600.fit),
+                      burnin_steps= 18000, saved_steps= 3000, n_cores= 3, n_chains= 3)
+
+  #Run models  
+  bayes_fit <- metab(bayes_specs, data=inputdt, info=c(site=sub.specs$model.id, source='FCL'))
+  
+  nms<-paste0(nm, "_", scenario, collapse = NULL, sep = NULL)
+  #Get DO.obs vs DO.mod and output the dataframe as csv files
+  oxy_preds<- predict_DO(bayes_fit)
+  oxy_preds$model.id<- rep(nms, nrow(oxy_preds))
+  write.csv(x=oxy_preds, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltmod/", nms, "_DO.csv", collapse = NULL, sep = NULL))
+  
+  #Plot DO.obs vs DO.mod
+  plot_DO_preds_ed(bayes_fit) + ggtitle(paste0(nms,"_BAYES_binnedk", collapse = NULL))
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_DO.png", collapse = NULL),
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\DOprediction_plot\\ltmod")
+  
+  #Output model estimation of GPP, ER and K600
+  prediction_daily<- bayes_fit@fit[["daily"]]
+  prediction_daily$model.id<- rep(nms, nrow(prediction_daily))
+  write.csv(x=prediction_daily, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltmod/", nms, "_P_R_K_preds.csv", collapse = NULL, sep = NULL))
+  
+  #Plot mcmc
+  rstan::traceplot(get_mcmc(bayes_fit), pars='K600_daily')
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_traceplot.png", collapse = NULL), 
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\mcmc\\ltmod")    
+  mcmc.sum<- summary(get_mcmc(bayes_fit), pars='K600_daily')
+  t<-cbind.data.frame(mcmc.sum$summary, mcmc.sum$c_summary)
+  t$model.id<- rep(nms, nrow(t))
+  write.csv(x=t, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/mcmc/ltmod/", nms, "_mcmc_summary.csv", collapse = NULL, sep = NULL))
+  
+  #Calculate overall r squared between DO.obs and DO.mod 
+  overall_rsq<- summary(lm(oxy_preds$DO.mod~oxy_preds$DO.obs))$r.squared
+  
+  #Output lnQ.bin.weight
+  bin.weight<- data.frame(bayes_fit@data_daily)
+  bin.weight$model.id<- rep(nms, nrow(bin.weight))
+  write.csv(x=bin.weight, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltmod/", nms, "_binweight.csv", collapse = NULL, sep = NULL))
+  
+  #Output lnK600_lnQ_nodes
+  lnK.lnQ.nodes<- data.frame(bayes_fit@fit[["KQ_binned"]])
+  lnK.lnQ.nodes$model.id<- rep(nms, nrow(lnK.lnQ.nodes))
+  write.csv(x=lnK.lnQ.nodes, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltmod/", nms, "_lnK.lnQ.nodes.csv", collapse = NULL, sep = NULL))
+  
+  #Output overall model convergence
+  err.sig<- data.frame(c(model.id=nms, r2=overall_rsq, get_fit(bayes_fit)$overall))
+  k.daily.sig<- data.frame(c(model.id=nms, bayes_fit@fit[["KQ_overall"]]))
+  write.csv(x=err.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltmod/", nms, "_err.sig.csv", collapse = NULL, sep = NULL))
+  write.csv(x=k.daily.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltmod/", nms, "_k.daily.sig.csv", collapse = NULL, sep = NULL))
+  
+  #Output error of each timestep
+  err.ts<- bayes_fit@fit[["inst"]]
+  err.ts$model.id<- rep(nms, nrow(err.ts))
+  write.csv(x=err.ts, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltmod", nms, "_err.ts.csv", collapse = NULL, sep = NULL))
+  
+}
+
+res1<-lapply(input.ltmod_csv[1:1], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[2:2], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[3:3], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[4:4], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[5:5], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[6:6], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[7:7], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[8:8], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[9:9], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[10:10], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[11:11], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[12:12], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[13:13], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[14:14], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[15:15], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[16:16], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[17:17], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[18:18], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[19:19], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[20:20], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[21:21], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[22:22], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[23:23], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[24:24], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[25:25], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[26:26], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[27:27], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[28:28], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[29:29], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[30:30], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[31:31], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[32:32], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[33:33], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[34:34], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[35:35], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[36:36], bayes.ltmod.function)
+
+#Need to rerun the following models
+res1<-lapply(input.ltmod_csv[2:2], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[8:8], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[12:12], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[13:13], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[14:14], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[26:26], bayes.ltmod.function)
+
+###########################################################################
+#STEP 1.3: Bayesian Model for 3d-7d dataset
+#For datasets >2 but<8 d: Use pooled (but not binned, unless variation in Q is greater than 2-fold) approach to estimate k
+#Step 1.3: Choose a model structure for ltmod#
+bayes_name_linp_lin <- mm_name(
+  type='bayes', pool_K600='linear', 
+  err_obs_iid=TRUE, err_proc_acor=FALSE, err_proc_iid=TRUE, 
+  ode_method='trapezoid')
+bayes_name_linp_lin
+
+model.specs_BN_CONT_pool<- read.csv(file = "c:\\R\\metabolism_Mengdi\\bayes_test\\0418\\model.specs_BN_CONT_pool_0418.csv", stringsAsFactors=FALSE)
+model.specs_BN_CONT_pool$model.id<- as.character(model.specs_BN_CONT_pool$model.id)
+
+bayes.ltmod.function2<- function(inputdt){
+  scenario<-"appling.default.ltmod"
+  inputdt<- as.data.frame(inputdt)
+  inputdt$solar.time<- as.POSIXct(strptime(inputdt$solar.time, "%Y-%m-%d %H:%M:%S",  tz="UTC"))
+  nm<- as.character(inputdt$fname_merged[1])
+  siteinfo<- gsub(pattern = "_up|_down", replacement = "", x=nm, fixed = F)
+  inputdt<-inputdt[, -c(ncol(inputdt))]
+  sub.specs<- data.frame(filter(model.specs_BN_CONT_pool, model.id==nm))
+  bayes_specs<- specs(model_name= bayes_name_linp_lin, keep_mcmcs = T, keep_mcmc_data = F,
+                      day_start = sub.specs$hour.start , day_end = sub.specs$hour.end, 
+                      GPP_daily_mu= 6 , ER_daily_mu = -7, GPP_daily_sigma= 6, ER_daily_sigma=7,
+                      GPP_daily_lower=0, ER_daily_upper=0,
+                      lnK600_lnQ_intercept_mu= sub.specs$intcp,
+                      lnK600_lnQ_slope_mu=sub.specs$slp,
+                      burnin_steps= 18000, saved_steps= 3000, n_cores= 3, n_chains= 3)
+  
+  #Run models  
+  bayes_fit <- metab(bayes_specs, data=inputdt, info=c(site=sub.specs$model.id, source='FCL'))
+  
+  nms<-paste0(nm, "_", scenario, collapse = NULL, sep = NULL)
+  #Get DO.obs vs DO.mod and output the dataframe as csv files
+  oxy_preds<- predict_DO(bayes_fit)
+  oxy_preds$model.id<- rep(nms, nrow(oxy_preds))
+  write.csv(x=oxy_preds, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltmod/", nms, "_DO.csv", collapse = NULL, sep = NULL))
+  
+  #Plot DO.obs vs DO.mod
+  plot_DO_preds_ed(bayes_fit) + ggtitle(paste0(nms,"_BAYES_linpooledk", collapse = NULL))
+  ggsave(filename= paste0(nms, "_BAYES_linpooledk_DO.png", collapse = NULL),
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\DOprediction_plot\\ltmod")
+  
+  #Output model estimation of GPP, ER and K600
+  prediction_daily<- bayes_fit@fit[["daily"]]
+  prediction_daily$model.id<- rep(nms, nrow(prediction_daily))
+  write.csv(x=prediction_daily, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltmod/", nms, "_P_R_K_preds.csv", collapse = NULL, sep = NULL))
+  
+  #Plot mcmc
+  rstan::traceplot(get_mcmc(bayes_fit), pars='K600_daily')
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_traceplot.png", collapse = NULL), 
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\mcmc\\ltmod")    
+  mcmc.sum<- summary(get_mcmc(bayes_fit), pars='K600_daily')
+  t<-cbind.data.frame(mcmc.sum$summary, mcmc.sum$c_summary)
+  t$model.id<- rep(nms, nrow(t))
+  write.csv(x=t, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/mcmc/ltmod/", nms, "_mcmc_summary.csv", collapse = NULL, sep = NULL))
+  
+  #Calculate overall r squared between DO.obs and DO.mod 
+  overall_rsq<- summary(lm(oxy_preds$DO.mod~oxy_preds$DO.obs))$r.squared
+  
+  #Output lnQ.bin.weight
+  bin.weight<- data.frame(bayes_fit@data_daily)
+  bin.weight$model.id<- rep(nms, nrow(bin.weight))
+  write.csv(x=bin.weight, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltmod/", nms, "_binweight.csv", collapse = NULL, sep = NULL))
+  
+  #Output lnK600_lnQ_nodes
+  lnK.lnQ.nodes<- data.frame(bayes_fit@fit[["KQ_binned"]])
+  lnK.lnQ.nodes$model.id<- rep(nms, nrow(lnK.lnQ.nodes))
+  write.csv(x=lnK.lnQ.nodes, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltmod/", nms, "_lnK.lnQ.nodes.csv", collapse = NULL, sep = NULL))
+  
+  #Output overall model convergence
+  err.sig<- data.frame(c(model.id=nms, r2=overall_rsq, get_fit(bayes_fit)$overall))
+  k.daily.sig<- data.frame(c(model.id=nms, bayes_fit@fit[["KQ_overall"]]))
+  write.csv(x=err.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltmod/", nms, "_err.sig.csv", collapse = NULL, sep = NULL))
+  write.csv(x=k.daily.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltmod/", nms, "_k.daily.sig.csv", collapse = NULL, sep = NULL))
+  
+  #Output error of each timestep
+  err.ts<- bayes_fit@fit[["inst"]]
+  err.ts$model.id<- rep(nms, nrow(err.ts))
+  write.csv(x=err.ts, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltmod/", nms, "_err.ts.csv", collapse = NULL, sep = NULL))
+  
+}
+
+res1<-lapply(input.ltmod_csv2[1:1], bayes.ltmod.function2)
+res1<-lapply(input.ltmod_csv2[2:2], bayes.ltmod.function2)
+
+################################################################################################
+#input.ltmod USING OBSERVED PAR
+#STEP 2.1: Get the list of input csv file (merged input.ltobs)
+input.ltobs_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs", 
+                          pattern = "csv", full.names = T, recursive = F)
+
+input.ltobs_csv<-lapply(input.ltobs_files, read.csv)
+
+names(input.ltobs_csv)<- gsub(pattern = "_obslt.csv", replacement = "",
+                        x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs", pattern = "csv", full.names = F),
+                        fixed = F)
+
+#STEP 2.2: Choose a model structure for ltobs#
+bayes.ltobs.function<- function(inputdt){
+  scenario<-"appling.default.ltobs"
+  inputdt<- as.data.frame(inputdt)
+  inputdt$solar.time<- as.POSIXct(strptime(inputdt$solar.time, "%Y-%m-%d %H:%M:%S",  tz="UTC"))
+  nm<- as.character(inputdt$fname_merged[1])
+  siteinfo<- gsub(pattern = "_up|_down", replacement = "", x=nm, fixed = F)
+  inputdt<-inputdt[, -c(ncol(inputdt))]
+  sub.specs<- data.frame(filter(model.specs, model.id==nm))
+  k.specs<- data.frame(filter(k_bin.q, site==siteinfo))
+  brks<- k.specs$bins_Q.bounds
+  bayes_specs<- specs(model_name= bayes_name_binp_lin, keep_mcmcs = T, keep_mcmc_data = F,
+                      day_start = sub.specs$st_merged , day_end = sub.specs$ed_merged, 
+                      GPP_daily_mu= 6 , ER_daily_mu = -7, GPP_daily_sigma= 6, ER_daily_sigma=7,
+                      GPP_daily_lower=0, ER_daily_upper=0,
+                      K600_lnQ_nodes_centers= log(brks),
+                      K600_lnQ_nodes_meanlog= log(k.specs$K.600.fit),
+                      burnin_steps= 18000, saved_steps= 3000, n_cores= 3, n_chains= 3)
+  
+  #Run models  
+  bayes_fit <- metab(bayes_specs, data=inputdt, info=c(site=sub.specs$model.id, source='FCL'))
+  
+  nms<-paste0(nm, "_", scenario, collapse = NULL, sep = NULL)
+  #Get DO.obs vs DO.mod and output the dataframe as csv files
+  oxy_preds<- predict_DO(bayes_fit)
+  oxy_preds$model.id<- rep(nms, nrow(oxy_preds))
+  write.csv(x=oxy_preds, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltobs/", nms, "_DO.csv", collapse = NULL, sep = NULL))
+  
+  #Plot DO.obs vs DO.mod
+  plot_DO_preds_ed(bayes_fit) + ggtitle(paste0(nms,"_BAYES_binnedk", collapse = NULL))
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_DO.png", collapse = NULL),
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\DOprediction_plot\\ltobs")
+  
+  #Output model estimation of GPP, ER and K600
+  prediction_daily<- bayes_fit@fit[["daily"]]
+  prediction_daily$model.id<- rep(nms, nrow(prediction_daily))
+  write.csv(x=prediction_daily, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltobs/", nms, "_P_R_K_preds.csv", collapse = NULL, sep = NULL))
+  
+  #Plot mcmc
+  rstan::traceplot(get_mcmc(bayes_fit), pars='K600_daily')
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_traceplot.png", collapse = NULL), 
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\mcmc\\ltobs")    
+  mcmc.sum<- summary(get_mcmc(bayes_fit), pars='K600_daily')
+  t<-cbind.data.frame(mcmc.sum$summary, mcmc.sum$c_summary)
+  t$model.id<- rep(nms, nrow(t))
+  write.csv(x=t, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/mcmc/ltobs/", nms, "_mcmc_summary.csv", collapse = NULL, sep = NULL))
+  
+  #Calculate overall r squared between DO.obs and DO.mod 
+  overall_rsq<- summary(lm(oxy_preds$DO.mod~oxy_preds$DO.obs))$r.squared
+  
+  #Output lnQ.bin.weight
+  bin.weight<- data.frame(bayes_fit@data_daily)
+  bin.weight$model.id<- rep(nms, nrow(bin.weight))
+  write.csv(x=bin.weight, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltobs/", nms, "_binweight.csv", collapse = NULL, sep = NULL))
+  
+  #Output lnK600_lnQ_nodes
+  lnK.lnQ.nodes<- data.frame(bayes_fit@fit[["KQ_binned"]])
+  lnK.lnQ.nodes$model.id<- rep(nms, nrow(lnK.lnQ.nodes))
+  write.csv(x=lnK.lnQ.nodes, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltobs/", nms, "_lnK.lnQ.nodes.csv", collapse = NULL, sep = NULL))
+  
+  #Output overall model convergence
+  err.sig<- data.frame(c(model.id=nms, r2=overall_rsq, get_fit(bayes_fit)$overall))
+  k.daily.sig<- data.frame(c(model.id=nms, bayes_fit@fit[["KQ_overall"]]))
+  write.csv(x=err.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_err.sig.csv", collapse = NULL, sep = NULL))
+  write.csv(x=k.daily.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_k.daily.sig.csv", collapse = NULL, sep = NULL))
+  
+  #Output error of each timestep
+  err.ts<- bayes_fit@fit[["inst"]]
+  err.ts$model.id<- rep(nms, nrow(err.ts))
+  write.csv(x=err.ts, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_err.ts.csv", collapse = NULL, sep = NULL))
+  
+}
+
+res1<-lapply(input.ltobs_csv[1:1], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[2:2], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[3:3], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[4:4], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[5:5], bayes.ltobs.function)
+#res1<-lapply(input.ltobs_csv[6:6], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[7:7], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[8:8], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[9:9], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[10:10], bayes.ltobs.function)
+
+res1<-lapply(input.ltobs_csv[11:11], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[12:12], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[13:13], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[14:14], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[15:15], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[16:16], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[17:17], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[18:18], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[19:19], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[20:20], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[21:21], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[22:22], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[23:23], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[24:24], bayes.ltobs.function)
+
+
+res1<-lapply(input.ltobs_csv[2:2], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[3:3], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[4:4], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[5:5], bayes.ltobs.function)
+#res1<-lapply(input.ltobs_csv[6:6], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[7:7], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[8:8], bayes.ltobs.function)
+
+#DO NOT RERUN input.ltobs_csv[6:6], which is input.ltobs_csv$BN_up (this file needs to be extrapolated and rerun)
+#Need to rerun the following models
+res1<-lapply(input.ltobs_csv[18:18], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[9:9], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[9:9], bayes.ltobs.function)
+
+
+#################################################################################
+#STEP 2.3: Choose a model structure for ltobs#
+#Bayesian Model for 3d-7d dataset
+#For datasets >2 but<8 d: Use pooled (but not binned, unless variation in Q is greater than 2-fold) approach to estimate k
+
+model.specs_BN_CONT_pool<- read.csv(file = "c:\\R\\metabolism_Mengdi\\bayes_test\\0418\\model.specs_BN_CONT_pool_0418.csv", stringsAsFactors=FALSE)
+model.specs_BN_CONT_pool$model.id<- as.character(model.specs_BN_CONT_pool$model.id)
+
+bayes.ltobs.function2<- function(inputdt){
+  scenario<-"appling.default.ltobs"
+  inputdt<- as.data.frame(inputdt)
+  inputdt$solar.time<- as.POSIXct(strptime(inputdt$solar.time, "%Y-%m-%d %H:%M:%S",  tz="UTC"))
+  nm<- as.character(inputdt$fname_merged[1])
+  siteinfo<- gsub(pattern = "_up|_down", replacement = "", x=nm, fixed = F)
+  inputdt<-inputdt[, -c(ncol(inputdt))]
+  sub.specs<- data.frame(filter(model.specs_BN_CONT_pool, model.id==nm))
+  bayes_specs<- specs(model_name= bayes_name_linp_lin, keep_mcmcs = T, keep_mcmc_data = F,
+                      day_start = sub.specs$hour.start , day_end = sub.specs$hour.end, 
+                      GPP_daily_mu= 6 , ER_daily_mu = -7, GPP_daily_sigma= 6, ER_daily_sigma=7,
+                      GPP_daily_lower=0, ER_daily_upper=0,
+                      lnK600_lnQ_intercept_mu= sub.specs$intcp,
+                      lnK600_lnQ_slope_mu=sub.specs$slp,
+                      burnin_steps= 18000, saved_steps= 3000, n_cores= 3, n_chains= 3)
+  
+  #Run models  
+  bayes_fit <- metab(bayes_specs, data=inputdt, info=c(site=sub.specs$model.id, source='FCL'))
+  
+  nms<-paste0(nm, "_", scenario, collapse = NULL, sep = NULL)
+  #Get DO.obs vs DO.mod and output the dataframe as csv files
+  oxy_preds<- predict_DO(bayes_fit)
+  oxy_preds$model.id<- rep(nms, nrow(oxy_preds))
+  write.csv(x=oxy_preds, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltobs/", nms, "_DO.csv", collapse = NULL, sep = NULL))
+  
+  #Plot DO.obs vs DO.mod
+  plot_DO_preds_ed(bayes_fit) + ggtitle(paste0(nms,"_BAYES_linpooledk", collapse = NULL))
+  ggsave(filename= paste0(nms, "_BAYES_linpooledk_DO.png", collapse = NULL),
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\DOprediction_plot\\ltobs")
+  
+  #Output model estimation of GPP, ER and K600
+  prediction_daily<- bayes_fit@fit[["daily"]]
+  prediction_daily$model.id<- rep(nms, nrow(prediction_daily))
+  write.csv(x=prediction_daily, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltobs/", nms, "_P_R_K_preds.csv", collapse = NULL, sep = NULL))
+  
+  #Plot mcmc
+  rstan::traceplot(get_mcmc(bayes_fit), pars='K600_daily')
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_traceplot.png", collapse = NULL), 
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\mcmc\\ltobs")    
+  mcmc.sum<- summary(get_mcmc(bayes_fit), pars='K600_daily')
+  t<-cbind.data.frame(mcmc.sum$summary, mcmc.sum$c_summary)
+  t$model.id<- rep(nms, nrow(t))
+  write.csv(x=t, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/mcmc/ltobs/", nms, "_mcmc_summary.csv", collapse = NULL, sep = NULL))
+  
+  #Calculate overall r squared between DO.obs and DO.mod 
+  overall_rsq<- summary(lm(oxy_preds$DO.mod~oxy_preds$DO.obs))$r.squared
+  
+  #Output lnQ.bin.weight
+  bin.weight<- data.frame(bayes_fit@data_daily)
+  bin.weight$model.id<- rep(nms, nrow(bin.weight))
+  write.csv(x=bin.weight, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltobs/", nms, "_binweight.csv", collapse = NULL, sep = NULL))
+  
+  #Output lnK600_lnQ_nodes
+  lnK.lnQ.nodes<- data.frame(bayes_fit@fit[["KQ_binned"]])
+  lnK.lnQ.nodes$model.id<- rep(nms, nrow(lnK.lnQ.nodes))
+  write.csv(x=lnK.lnQ.nodes, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltobs/", nms, "_lnK.lnQ.nodes.csv", collapse = NULL, sep = NULL))
+  
+  #Output overall model convergence
+  err.sig<- data.frame(c(model.id=nms, r2=overall_rsq, get_fit(bayes_fit)$overall))
+  k.daily.sig<- data.frame(c(model.id=nms, bayes_fit@fit[["KQ_overall"]]))
+  write.csv(x=err.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_err.sig.csv", collapse = NULL, sep = NULL))
+  write.csv(x=k.daily.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_k.daily.sig.csv", collapse = NULL, sep = NULL))
+  
+  #Output error of each timestep
+  err.ts<- bayes_fit@fit[["inst"]]
+  err.ts$model.id<- rep(nms, nrow(err.ts))
+  write.csv(x=err.ts, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_err.ts.csv", collapse = NULL, sep = NULL))
+  
+}
+
+res1<-lapply(input.ltobs_csv2[1:1], bayes.ltobs.function2)
+res1<-lapply(input.ltobs_csv2[2:2], bayes.ltobs.function2)
+
+
+####################################################################
+#Rerun the files with extrapolated data
+#Get the list of input csv file (using PAR.MOD)
+input.ltmod_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/4extrapolation", 
+                          pattern = "modlt.csv", full.names = T, recursive = F)
+
+input.ltmod_csv<-lapply(input.ltmod_files, read.csv)
+
+names(input.ltmod_csv)<- gsub(pattern = "_modlt.csv", replacement = "",
+                        x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/4extrapolation", pattern = "modlt.csv", full.names = F),
+                        fixed = F)
+
+input.ltmod_csv2<- list(input.ltmod_csv$BN_CONT_pool_up, input.ltmod_csv$BN_CONT_pool_down)
+names(input.ltmod_csv2)<- c("BN_CONT_pool_up", "BN_CONT_pool_down")
+
+input.ltmod_csv$BN_CONT_pool_up<- NULL
+input.ltmod_csv$BN_CONT_pool_down<- NULL
+
+res1<-lapply(input.ltmod_csv[1:1], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[2:2], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv2[1:1], bayes.ltmod.function2)
+res1<-lapply(input.ltmod_csv2[2:2], bayes.ltmod.function2)
+
+###################################################################################################
+#(using PAR.OBS)
+input.ltobs_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/4extrapolation", 
+                          pattern = "obslt.csv", full.names = T, recursive = F)
+
+input.ltobs_csv<-lapply(input.ltobs_files, read.csv)
+
+names(input.ltobs_csv)<- gsub(pattern = "_obslt.csv", replacement = "",
+                        x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/4extrapolation", pattern = "obslt.csv", full.names = F),
+                        fixed = F)
+
+input.ltobs_csv2<- list(input.ltobs_csv$BN_CONT_pool_up, input.ltobs_csv$BN_CONT_pool_down)
+names(input.ltobs_csv2)<- c("BN_CONT_pool_up", "BN_CONT_pool_down")
+
+input.ltobs_csv$BN_CONT_pool_up<- NULL
+input.ltobs_csv$BN_CONT_pool_down<- NULL
+
+res1<-lapply(input.ltobs_csv[1:1], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[2:2], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv2[1:1], bayes.ltobs.function2)
+res1<-lapply(input.ltobs_csv2[2:2], bayes.ltobs.function2)
+
+
+
+res1<-lapply(input.ltmod_csv[1:1], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[2:2], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv2[1:1], bayes.ltmod.function2)
+res1<-lapply(input.ltmod_csv2[2:2], bayes.ltmod.function2)
+res2<-lapply(input.ltobs_csv[1:1], bayes.ltobs.function)
+res2<-lapply(input.ltobs_csv[2:2], bayes.ltobs.function)
+res2<-lapply(input.ltobs_csv2[1:1], bayes.ltobs.function2)
+res2<-lapply(input.ltobs_csv2[2:2], bayes.ltobs.function2)
+
+res1<-lapply(input.ltmod_csv2[1:1], bayes.ltmod.function2)
+res1<-lapply(input.ltmod_csv2[2:2], bayes.ltmod.function2)
+
+##################################
+#input.ltobs_unchanged
+input.ltobs_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs_unchanged", 
+                                pattern = "csv", full.names = T, recursive = F)
+
+input.ltobs_csv<-lapply(input.ltobs_files, read.csv)
+
+names(input.ltobs_csv)<- gsub(pattern = "_obslt.csv", replacement = "",
+                              x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs_unchanged", pattern = "csv", full.names = F),
+                              fixed = F)
+
+
+
+input.ltobs_csv$BN_CONT_pool_down<-NULL
+input.ltobs_csv$BN_CONT_pool_up<-NULL
+input.ltobs_csv$SF_down<-NULL
+rm(input.ltmod_csv)
+rm(input.ltmod_csv2)
+rm(input.ltobs_csv2)
+
+res1<-lapply(input.ltobs_csv[1:1], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[2:2], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[3:3], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[4:4], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[5:5], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[6:6], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[7:7], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[8:8], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[9:9], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[10:10], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[11:11], bayes.ltobs.function)
+
+##################################
+input.ltobs_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs", 
+                                pattern = "csv", full.names = T, recursive = F)
+
+input.ltobs_csv<-lapply(input.ltobs_files, read.csv)
+
+names(input.ltobs_csv)<- gsub(pattern = "_obslt.csv", replacement = "",
+                              x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs", pattern = "csv", full.names = F),
+                              fixed = F)
+
+res1<-lapply(input.ltobs_csv[8:8], bayes.ltobs.function)
+rm(input.ltobs_csv)
+
+input.ltmod_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltmod", 
+                                pattern = "csv", full.names = T, recursive = F)
+
+input.ltmod_csv<-lapply(input.ltmod_files, read.csv)
+
+names(input.ltmod_csv)<- gsub(pattern = "_modlt.csv", replacement = "",
+                              x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltmod", pattern = "csv", full.names = F),
+                              fixed = F)
+input.ltmod_csv$BN_CONT_up<- NULL
+input.ltmod_csv$SF_down<- NULL
+input.ltmod_csv$BN_CONT_pool_up<- NULL
+input.ltmod_csv$BN_CONT_pool_down<- NULL
+
+res1<-lapply(input.ltmod_csv[1:1], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[2:2], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[3:3], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[4:4], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[5:5], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[6:6], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[7:7], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[8:8], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[9:9], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[10:10], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[11:11], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[12:12], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[13:13], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[14:14], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[15:15], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[16:16], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[17:17], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[18:18], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[19:19], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[20:20], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[21:21], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[22:22], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[23:23], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[24:24], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[25:25], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[26:26], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[27:27], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[28:28], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[29:29], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[30:30], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[31:31], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[32:32], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[33:33], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[34:34], bayes.ltmod.function)
+
+
+res1<-lapply(input.ltmod_csv[2:2], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[11:11], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[12:12], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[13:13], bayes.ltmod.function)
+res1<-lapply(input.ltmod_csv[24:24], bayes.ltmod.function)
+
+
+
+########################################
+bayes.ltobs.function<- function(inputdt){
+  scenario<-"appling.default.ltobs"
+  inputdt<- as.data.frame(inputdt)
+  inputdt$solar.time<- as.POSIXct(strptime(inputdt$solar.time, "%Y-%m-%d %H:%M:%S",  tz="UTC"))
+  nm<- as.character(inputdt$fname_merged[1])
+  siteinfo<- gsub(pattern = "_up|_down", replacement = "", x=nm, fixed = F)
+  inputdt<-inputdt[, -c(ncol(inputdt))]
+  sub.specs<- data.frame(filter(model.specs, model.id==nm))
+  k.specs<- data.frame(filter(k_bin.q, site==siteinfo))
+  brks<- k.specs$bins_Q.bounds
+  bayes_specs<- specs(model_name= bayes_name_binp_lin, keep_mcmcs = T, keep_mcmc_data = F,
+                      day_start = sub.specs$st_merged , day_end = sub.specs$ed_merged, 
+                      GPP_daily_mu= 6 , ER_daily_mu = -7, GPP_daily_sigma= 6, ER_daily_sigma=7,
+                      GPP_daily_lower=0, ER_daily_upper=0,
+                      K600_lnQ_nodes_centers= log(brks),
+                      K600_lnQ_nodes_meanlog= log(k.specs$K.600.fit),
+                      burnin_steps= 18000, saved_steps= 3000, n_cores= 3, n_chains= 3)
+  
+  #Run models  
+  bayes_fit <- metab(bayes_specs, data=inputdt, info=c(site=sub.specs$model.id, source='FCL'))
+  
+  nms<-paste0(nm, "_", scenario, collapse = NULL, sep = NULL)
+  #Get DO.obs vs DO.mod and output the dataframe as csv files
+  oxy_preds<- predict_DO(bayes_fit)
+  oxy_preds$model.id<- rep(nms, nrow(oxy_preds))
+  write.csv(x=oxy_preds, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltobs/", nms, "_DO.csv", collapse = NULL, sep = NULL))
+  
+  #Plot DO.obs vs DO.mod
+  plot_DO_preds_ed(bayes_fit) + ggtitle(paste0(nms,"_BAYES_binnedk", collapse = NULL))
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_DO.png", collapse = NULL),
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\DOprediction_plot\\ltobs")
+  
+  #Output model estimation of GPP, ER and K600
+  prediction_daily<- bayes_fit@fit[["daily"]]
+  prediction_daily$model.id<- rep(nms, nrow(prediction_daily))
+  write.csv(x=prediction_daily, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/prediction/ltobs/", nms, "_P_R_K_preds.csv", collapse = NULL, sep = NULL))
+  
+  #Plot mcmc
+  rstan::traceplot(get_mcmc(bayes_fit), pars='K600_daily')
+  ggsave(filename= paste0(nms, "_BAYES_binnedk_traceplot.png", collapse = NULL), 
+         path = "c:\\R\\metabolism_Mengdi\\bayes_test\\0831\\mcmc\\ltobs")    
+  mcmc.sum<- summary(get_mcmc(bayes_fit), pars='K600_daily')
+  t<-cbind.data.frame(mcmc.sum$summary, mcmc.sum$c_summary)
+  t$model.id<- rep(nms, nrow(t))
+  write.csv(x=t, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/mcmc/ltobs/", nms, "_mcmc_summary.csv", collapse = NULL, sep = NULL))
+  
+  #Calculate overall r squared between DO.obs and DO.mod 
+  overall_rsq<- summary(lm(oxy_preds$DO.mod~oxy_preds$DO.obs))$r.squared
+  
+  #Output lnQ.bin.weight
+  bin.weight<- data.frame(bayes_fit@data_daily)
+  bin.weight$model.id<- rep(nms, nrow(bin.weight))
+  write.csv(x=bin.weight, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltobs/", nms, "_binweight.csv", collapse = NULL, sep = NULL))
+  
+  #Output lnK600_lnQ_nodes
+  lnK.lnQ.nodes<- data.frame(bayes_fit@fit[["KQ_binned"]])
+  lnK.lnQ.nodes$model.id<- rep(nms, nrow(lnK.lnQ.nodes))
+  write.csv(x=lnK.lnQ.nodes, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/kqcheck/ltobs/", nms, "_lnK.lnQ.nodes.csv", collapse = NULL, sep = NULL))
+  
+  #Output overall model convergence
+  err.sig<- data.frame(c(model.id=nms, r2=overall_rsq, get_fit(bayes_fit)$overall))
+  k.daily.sig<- data.frame(c(model.id=nms, bayes_fit@fit[["KQ_overall"]]))
+  write.csv(x=err.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_err.sig.csv", collapse = NULL, sep = NULL))
+  write.csv(x=k.daily.sig, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_k.daily.sig.csv", collapse = NULL, sep = NULL))
+  
+  #Output error of each timestep
+  err.ts<- bayes_fit@fit[["inst"]]
+  err.ts$model.id<- rep(nms, nrow(err.ts))
+  write.csv(x=err.ts, row.names = F,
+            file = paste0("C:/R/metabolism_Mengdi/bayes_test/0831/errorcheck/ltobs/", nms, "_err.ts.csv", collapse = NULL, sep = NULL))
+  
+}
+
+input.ltobs_files <- list.files(path = "C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs", 
+                                pattern = "csv", full.names = T, recursive = F)
+
+input.ltobs_csv<-lapply(input.ltobs_files, read.csv)
+
+names(input.ltobs_csv)<- gsub(pattern = "_obslt.csv", replacement = "",
+                              x=list.files("C:/R/metabolism_Mengdi/dataprep_new/dataprep_08312020/input.ltobs", pattern = "csv", full.names = F),
+                              fixed = F)
+
+res1<-lapply(input.ltobs_csv[1:1], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[2:2], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[3:3], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[4:4], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[5:5], bayes.ltobs.function)
+#res1<-lapply(input.ltobs_csv[6:6], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[7:7], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[8:8], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[9:9], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[10:10], bayes.ltobs.function)
+
+res1<-lapply(input.ltobs_csv[11:11], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[12:12], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[13:13], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[14:14], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[15:15], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[16:16], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[17:17], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[18:18], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[19:19], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[20:20], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[21:21], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[22:22], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[23:23], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[24:24], bayes.ltobs.function)
+
+
+
+res1<-lapply(input.ltobs_csv[9:9], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[10:10], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv[18:18], bayes.ltobs.function)
+
+input.ltobs_csv3<- list(input.ltobs_csv$EG_CONT_up, input.ltobs_csv$SP_CONT_up)
+names(input.ltobs_csv3)<- c("EG_CONT_up", "SP_CONT_up")
+
+rm(input.ltobs_csv)
+res1<-lapply(input.ltobs_csv3[1:1], bayes.ltobs.function)
+res1<-lapply(input.ltobs_csv3[2:2], bayes.ltobs.function)
+
+
+input.ltobs_csv3<- list(input.ltobs_csv3$SP_CONT_up)
+names(input.ltobs_csv3)<- "SP_CONT_up"
+
+res1<-lapply(input.ltobs_csv3[1:1], bayes.ltobs.function)

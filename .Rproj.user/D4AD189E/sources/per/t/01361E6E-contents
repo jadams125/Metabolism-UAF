@@ -1,0 +1,85 @@
+#' ## dat_real ##
+#' 
+#' Download and prepare real data to use in multiple tests
+
+library(mda.streams)
+library(streamMetabolizer)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(unitted)
+
+#### Download real data
+
+# ten_sites
+# good easy sites
+# nwis_09406000 # GPP in 0:15, looks quite clean seasonally, 8 year record
+# nwis_05406497 # much like nwis_09406000: GPP in 0:15, looks quite clean seasonally, 8 year record
+# good clean-up sites?
+# nwis_01648010 # pretty complete 10/2013-10/2015, some short DO gaps, GPP in 0:5 and noisy within that range, mostly right sign
+# nwis_06893820 # GPP in 0:3, clear seasonality but some outliers, mostly right sign, Little Blue River, Kansas City, https://pubs.usgs.gov/fs/2011/3033/pdf/fs2011-3033.pdf
+# good hard sites
+# nwis_11462500 # 4 years, GPP really driven by K and discharge
+# nwis_04121970 # hugely noisy GPP (-100:200), high K (150:225)
+# other sites
+# nwis_01388000 # seasonal but with more outliers, positive ER
+# nwis_07239450 # too many data gaps
+# nwis_01487150 # too short (0 complete years, 2 partial)
+# nwis_02217643 # teeny GPP (<1), little seasonality in any param
+# nwis_11126000 # too short (<1 year)
+site <- 'nwis_06893820'
+# view_google_map(site)
+
+# pull down previous metabolism estimates
+metab_real <- v(get_ts(c('sitedate_calcLon','gpp_estBest','er_estBest','K600_estBest'), site))
+saveRDS(metab_real, '01_tests/dat/metab_real.Rds')
+metab_real <- readRDS('01_tests/dat/metab_real.Rds')
+
+# plot metabolism estimates
+metab_real %>% 
+  mutate(great_date = gpp>0 & er<0 & K600>0) %>%
+  gather(variable, value, gpp, er, K600) %>% mutate(variable=ordered(variable, levels=c('gpp','er','K600'))) %>%
+  ggplot(aes(x=sitedate, y=value, color=great_date)) + geom_point() + facet_grid(variable ~ ., scales='free_y')
+plot(metab_real$sitedate[-1], diff(metab_real$sitedate), xlab='date', ylab='gap between dates (days)')
+
+# select a subset of dates to try
+start_date <- '2012-01-01'
+end_date <- '2015-09-04' # gives exactly 1095 good_dates (3*365) below
+metab_real_filt <- filter(
+  metab_real, !is.na(gpp), !is.na(er), !is.na(K600), 
+  gpp>0, er<0, K600>0,
+  sitedate >= start_date, sitedate <= end_date)
+good_dates <- metab_real_filt$sitedate
+length(good_dates) # for MS
+
+# pull down a chunk of good data for simulation
+data_real <- get_metab_prep(
+  site,
+  start_date=start_date,
+  end_date=format(as.Date(end_date) + as.difftime(2, units='days')), model='metab_bayes',
+  par=choose_data_source('par', site, 'manual', src='calcLatSw', type='ts'),
+  sitedate=NA, dischdaily=NA)
+data_filt <- data_real
+data_filt$data_daily <- filter(data_real$data_daily, date %in% good_dates)
+data_filt$data <- mm_filter_valid_days(data_real$data, data_filt$data_daily)$data
+data_filt$data <- data_filt$data[data_filt$data$date %in% data_filt$data_daily$date, ] %>% select(-date)
+data_filt$data <- mm_model_by_ply(function(data_ply, ...) data_ply, data=data_filt$data, day_start=4, day_end=28) # attach dates to data
+if(!dir.exists('01_tests/dat')) dir.create('01_tests/dat')
+saveRDS(data_filt, '01_tests/dat/data_real.Rds')
+data_real <- readRDS('01_tests/dat/data_real.Rds')
+
+# plot the final data
+data_real$data %>%
+  gather(variable, value, DO.obs, DO.sat, depth, temp.water, light) %>% 
+  mutate(variable=ordered(variable, levels=c('DO.obs', 'DO.sat', 'depth', 'temp.water', 'light'))) %>%
+  ggplot(aes(x=solar.time, y=value)) + geom_line() + facet_grid(variable ~ ., scales='free_y')
+data_real$data_daily %>%
+  left_join(metab_real, by=c(date='sitedate')) %>%
+  mutate(great_date = gpp>0 & er<0 & K600>0) %>%
+  gather(variable, value, gpp, er, K600, discharge.daily) %>% mutate(variable=ordered(variable, levels=c('gpp','er','K600','discharge.daily'))) %>%
+  ggplot(aes(x=date, y=value, color=great_date)) + geom_point() + facet_grid(variable ~ ., scales='free_y')
+
+dim(data_real$data)
+dim(data_real$data_daily)
+nrow(data_real$data)/nrow(data_real$data_daily)
+

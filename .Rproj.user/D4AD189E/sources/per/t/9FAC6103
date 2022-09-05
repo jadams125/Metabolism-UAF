@@ -1,0 +1,26 @@
+{
+    "id": "9FAC6103",
+    "path": "~/GitHub/Metabolism-UAF/DataInputPlots.R",
+    "project_path": "DataInputPlots.R",
+    "type": "r_source",
+    "hash": "2203821062",
+    "contents": "",
+    "dirty": false,
+    "created": 1661910410399.0,
+    "source_on_save": false,
+    "relative_order": 14,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "40,0",
+        "scrollLine": "34"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1661377800,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1661377800,
+    "read_only": false,
+    "read_only_alternatives": []
+}
