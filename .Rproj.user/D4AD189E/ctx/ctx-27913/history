@@ -1,0 +1,512 @@
+# pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testVAUL_SM_light_temp_depth.pdf")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# vaul.all %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "VAUL, 2019 - 2021")
+#
+# dev.off()
+# #2019
+# pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testVAUL_SM_light_temp_depth.2019.pdf")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# vaul.all %>% filter(datetimeAK >= "2019-01-01 00:00:00") %>% filter(datetimeAK <= "2020-01-01 00:00:00") %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "VAUL, 2019")
+#
+# dev.off()
+#
+# #2020
+# pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testVAUL_SM_light_temp_depth.2020.pdf")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# vaul.all %>% filter(datetimeAK >= "2020-01-01 00:00:00") %>% filter(datetimeAK <= "2021-01-01 00:00:00") %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "VAUL, 2020")
+#
+# dev.off()
+#
+# #2021
+# pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testVAUL_SM_light_temp_depth.2021.pdf")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# vaul.all %>% filter(datetimeAK >= "2021-01-01 00:00:00") %>% filter(datetimeAK <= "2022-01-01 00:00:00") %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "VAUL, 2021")
+#
+# dev.off()
+#
+#
+#
+# #STRT
+#
+#
+# strt.combinded.par <- strt.combinded.par %>%
+#   dplyr::rename(light = Calibrated.Value)
+#
+# strt.combinded.par <- strt.combinded.par %>%
+#   dplyr::rename(datetimeAK = DateTime)
+#
+# strt.combinded.par$datetimeAK <- lubridate::round_date(strt.combinded.par$datetimeAK, "15 minutes")
+#
+#
+#
+# strt.all <- merge(strt.combinded.par, strt.all,  by = "datetimeAK", all = TRUE)
+#
+#
+# png(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testSTRT_SM_light_temp_depth.png")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# strt.all %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "STRT, 2019 - 2021")
+#
+# dev.off()
+# #2019
+# png(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testSTRT_SM_light_temp_depth.2019.png")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# strt.all %>% filter(datetimeAK >= "2019-01-01 00:00:00") %>% filter(datetimeAK <= "2020-01-01 00:00:00") %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "STRT, 2019")
+#
+# dev.off()
+#
+# #2020
+# png(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testSTRT_SM_light_temp_depth.2020.png")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# strt.all %>% filter(datetimeAK >= "2020-01-01 00:00:00") %>% filter(datetimeAK <= "2021-01-01 00:00:00") %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "STRT, 2020")
+#
+# dev.off()
+#
+# #2021
+# png(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/testSTRT_SM_light_temp_depth.2021.png")
+#
+# labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)')
+# strt.all %>% filter(datetimeAK >= "2021-01-01 00:00:00") %>% filter(datetimeAK <= "2022-01-01 00:00:00") %>%
+#   select(solar.time, depth, temp.water, light) %>%
+#   gather(type, value, depth, temp.water, light) %>%
+#   mutate(
+#     type=ordered(type, levels=c('depth','temp.water','light')),
+#     units=ordered(labels[type], unname(labels))) %>%
+#   ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+#   facet_grid(units ~ ., scale='free_y') + theme_bw() +
+#   scale_color_discrete('variable')+ labs(title = "STRT, 2021")
+#
+# dev.off()
+#
+#
+#
+#
+#
+max(light2020formax$light)
+light2021formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2021-00-00 00:00:00' & STRT.comb$datetimeAK <= '2022-00-00 00:00:00')
+light2021formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2021-00-00 14:15:00' & STRT.comb$datetimeAK <= '2022-00-00 00:00:00')
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-00-00 14:15:00' & STRT.comb$datetimeAK <= '2021-00-00 00:00:00')
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-00-00 14:15:00' & STRT.comb$datetimeAK <= '2021-00-00 00:00:00')
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-0-0 14:15:00' & STRT.comb$datetimeAK <= '2021-00-00 00:00:00')
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-0-0 14:15:00' & STRT.comb$datetimeAK <= '2021-0-0 00:00:00')
+STRT.comb <- merge(All.years.strt.MESSY, STRT.ALL.Q,
+# strt.depth, strt.combinded.par,strt.ap.data,
+by = "datetimeAK", all = TRUE)
+STRT.comb <- merge(STRT.comb, strt.depth,
+# strt.combinded.par,strt.ap.data,
+by = "datetimeAK", all = TRUE)
+STRT.comb <- merge(STRT.comb, strt.combinded.par,
+# strt.ap.data,
+by = "datetimeAK", all = TRUE)
+test1 <- strt.ap.data[-c(1)]
+STRT.comb <- merge(STRT.comb, test1,
+# ,
+by = "datetimeAK", all = TRUE)
+STRT.comb$DO.sat <- calc_DO_sat(STRT.comb$temp.water, STRT.comb$air.pressure.mbar, model = "garcia-benson")
+STRT.comb$solar.time <- calc_solar_time(STRT.comb$datetimeAK,-146.915323)
+STRT.comb$light[STRT.comb$datetimeAK >= '2019-08-23 14:15:00' & STRT.comb$datetimeAK <= '2019-09-17 12:00:00'] <- NA
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-0-0 14:15:00' & STRT.comb$datetimeAK <= '2021-0-0 00:00:00')
+max(light2020formax$light)
+light2021formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2021-00-00 14:15:00' & STRT.comb$datetimeAK <= '2022-00-00 00:00:00')
+View(STRT.comb)
+STRT.comb$datetimeAK <- as.POSIXct(STRT.comb$datetimeAK)
+STRT.comb$solar.time <- calc_solar_time(STRT.comb$datetimeAK,-146.915323)
+STRT.comb$light[STRT.comb$datetimeAK >= '2019-08-23 14:15:00' & STRT.comb$datetimeAK <= '2019-09-17 12:00:00'] <- NA
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-0-0 14:15:00' & STRT.comb$datetimeAK <= '2021-0-0 00:00:00')
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-00-00 14:15:00' & STRT.comb$datetimeAK <= '2021-00-00 00:00:00')
+STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-00-00 14:15:00' & STRT.comb$datetimeAK <= '2021-00-00 00:00:00')
+light2020formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2020-05-00 14:15:00' & STRT.comb$datetimeAK <= '2021-09-00 00:00:00')
+light2020formax <- STRT.comb %>% filter(datetimeAK >= '2020-00-00 14:15:00' & datetimeAK <= '2021-00-00 00:00:00')
+STRT.comb$datetimeAK <- as.POSIXct(STRT.comb$datetimeAK)
+STRT.comb$datetimeAK <- as.POSIXct(STRT.comb$datetimeAK)
+light2020formax <- STRT.comb %>% filter(datetimeAK >= '2020-00-00 14:15:00' & datetimeAK <= '2021-00-00 00:00:00')
+STRT.comb$datetimeAK <- as.character(STRT.comb$datetimeAK)
+light2020formax <- STRT.comb %>% filter(datetimeAK >= '2020-00-00 14:15:00' & datetimeAK <= '2021-00-00 00:00:00')
+max(light2020formax$light)
+light2021formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2021-00-00 14:15:00' & STRT.comb$datetimeAK <= '2022-00-00 00:00:00')
+max(light2021formax$light)
+View(light2020formax)
+max(as.numeric(light2020formax$light))
+max(light2020formax$light)
+View(light2020formax)
+light2020formax$light
+str(light2020formax$light)
+max(light2020formax$light)
+?max()
+max(light2020formax$light, na.rm = FALSE)
+max(light2020formax$light, na.rm = TRUE)
+light2021formax <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2021-00-00 14:15:00' & STRT.comb$datetimeAK <= '2022-00-00 00:00:00')
+max(light2021formax$light, na.rm = TRUE)
+?calc_light()
+STRT.comb$modeled.light <- calc_light(STRT.comb$solar.time, 64.754280, -146.477647, max.PAR = 1932.084)
+STRT.comb.fill.light <- STRT.comb %>% filter(STRT.comb$datetimeAK >= '2019-08-23 14:15:00' & STRT.comb$datetimeAK <= '2019-09-17 12:00:00') %>%
+mutate(light = coalesce(light,modeled.light))
+STRT.comb.1 <- STRT.comb %>% filter(STRT.comb$datetimeAK < '2019-08-23 14:15:00')
+STRT.comb.3 <- STRT.comb %>% filter(STRT.comb$datetimeAK > '2019-09-17 12:00:00')
+STRT.comb <- rbind(STRT.comb.1, STRT.comb.fill.light, STRT.comb.3)
+STRT.comb <- distinct(STRT.comb)
+# ALL YEARS
+strt.plot1 <- STRT.comb %>%
+mutate(DO.pctsat = 100 * (DO.obs / DO.sat)) %>%
+select(solar.time, starts_with('DO')) %>%
+gather(type, DO.value, starts_with('DO')) %>%
+mutate(units=ifelse(type == 'DO.pctsat', 'DO\n(% sat)', 'DO\n(mg/L)')) %>%
+ggplot(aes(x=solar.time, y=DO.value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable') + labs(title = "Stuart ODO, 2019 - 2021")
+labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)', discharge='m^3/sec', air.pressure.mbar = 'mbar')
+strtPlot2 <- STRT.comb %>%
+select(solar.time, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+gather(type, value, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+mutate(
+type=ordered(type, levels=c('depth','temp.water','light','discharge', 'air.pressure.mbar')),
+units=ordered(labels[type], unname(labels))) %>%
+ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable')
+pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/STRT_comb_2019-2021.pdf", height= 8.5)
+ggarrange(strt.plot1, strtPlot2, ncol = 1, nrow = 2)
+dev.off()
+#
+strt.plot1.19 <- STRT.comb %>% filter(datetimeAK <= "2020-01-01 00:00:00") %>%
+mutate(DO.pctsat = 100 * (DO.obs / DO.sat)) %>%
+select(solar.time, starts_with('DO')) %>%
+gather(type, DO.value, starts_with('DO')) %>%
+mutate(units=ifelse(type == 'DO.pctsat', 'DO\n(% sat)', 'DO\n(mg/L)')) %>%
+ggplot(aes(x=solar.time, y=DO.value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable') + labs(title = "Stuart ODO, 2019")
+labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)', discharge= 'm^3/sec', air.pressure.mbar = 'mbar')
+strtPlot2.19 <- STRT.comb %>% filter(datetimeAK <= "2020-01-01 00:00:00") %>%
+select(solar.time, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+gather(type, value, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+mutate(
+type=ordered(type, levels=c('depth','temp.water','light','discharge', 'air.pressure.mbar')),
+units=ordered(labels[type], unname(labels))) %>%
+ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable')
+pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/STRT_comb.2019.pdf", height= 8.5)
+ggarrange(strt.plot1.19, strtPlot2.19, ncol = 1, nrow = 2)
+dev.off()
+#
+strt.plot1.20 <- STRT.comb %>% filter(datetimeAK >= "2020-01-01 00:00:00") %>% filter(datetimeAK <= "2021-01-01 00:00:00") %>%
+mutate(DO.pctsat = 100 * (DO.obs / DO.sat)) %>%
+select(solar.time, starts_with('DO')) %>%
+gather(type, DO.value, starts_with('DO')) %>%
+mutate(units=ifelse(type == 'DO.pctsat', 'DO\n(% sat)', 'DO\n(mg/L)')) %>%
+ggplot(aes(x=solar.time, y=DO.value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable') + labs(title = "Stuart ODO, 2020")
+labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)', discharge= 'm^3/sec', air.pressure.mbar = 'mbar')
+strtPlot2.20 <- STRT.comb %>% filter(datetimeAK >= "2020-01-01 00:00:00") %>% filter(datetimeAK <= "2021-01-01 00:00:00") %>%
+select(solar.time, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+gather(type, value, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+mutate(
+type=ordered(type, levels=c('depth','temp.water','light', 'discharge', 'air.pressure.mbar')),
+units=ordered(labels[type], unname(labels))) %>%
+ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable')
+pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/STRT_comb.2020.pdf", height= 8.5)
+ggarrange(strt.plot1.20, strtPlot2.20, ncol = 1, nrow = 2)
+dev.off()
+#
+strt.plot1.21 <- STRT.comb %>% filter(datetimeAK >= "2021-01-01 00:00:00") %>% filter(datetimeAK <= "2022-01-01 00:00:00") %>%
+mutate(DO.pctsat = 100 * (DO.obs / DO.sat)) %>%
+select(solar.time, starts_with('DO')) %>%
+gather(type, DO.value, starts_with('DO')) %>%
+mutate(units=ifelse(type == 'DO.pctsat', 'DO\n(% sat)', 'DO\n(mg/L)')) %>%
+ggplot(aes(x=solar.time, y=DO.value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable') + labs(title = "Stuart ODO, 2021")
+labels <- c(depth='depth\n(m)', temp.water='water temp\n(deg C)', light='PAR\n(umol m^-2 s^-1)', discharge= 'm^3/sec', air.pressure.mbar = 'mbar')
+strtPlot2.21 <- STRT.comb %>% filter(datetimeAK >= "2021-01-01 00:00:00") %>% filter(datetimeAK <= "2022-01-01 00:00:00") %>%
+select(solar.time, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+gather(type, value, depth, temp.water, light, discharge, air.pressure.mbar) %>%
+mutate(
+type=ordered(type, levels=c('depth','temp.water','light','discharge', "air.pressure.mbar")),
+units=ordered(labels[type], unname(labels))) %>%
+ggplot(aes(x=solar.time, y=value, color=type)) + geom_line() +
+facet_grid(units ~ ., scale='free_y') + theme_bw() +
+scale_color_discrete('variable')
+pdf(file = "C:/Users/jacob/OneDrive - University of Alaska/GitHub/Metabolism-UAF/Plots/STRT_comb.2021.pdf", height= 8.5)
+ggarrange(strt.plot1.21, strtPlot2.21, ncol = 1, nrow = 2)
+dev.off()
+library(streamMetabolizer)
+library(here)
+bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
+bayes_name
+bayes_name_AppEtAL <- "b_Kb_oipi_tr_plrckm.stan"
+bayes_name_AppEtAL
+#MOOS
+bayes_specs <- specs(bayes_name,
+burnin_steps=2000, saved_steps=2000, n_cores=8, n_chains = 4,
+# GPP_daily_lower = 0, ER_daily_upper = 0
+)
+#FRCH
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+data.frch.mm <- na.omit(FRCH.comb) %>%
+select(solar.time, depth, DO.obs, DO.sat, temp.water, light, discharge)
+library(ggpubr)
+library(anytime)
+library(googlesheets4)
+library(ggpmisc)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(zoo)
+library(xts)
+library(forecast)
+library(googledrive)
+library(streamMetabolizer)
+library(readr)
+#FRCH
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+#FRCH
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+#FRCH
+set.wd()
+#FRCH
+setwd()
+#FRCH
+setwd(here())
+setwd()
+library(ggpubr)
+library(anytime)
+library(googlesheets4)
+library(ggpmisc)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(zoo)
+library(xts)
+library(forecast)
+library(googledrive)
+library(streamMetabolizer)
+library(readr)
+library(data.table)
+library(streamMetabolizer)
+library(here)
+bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
+bayes_name
+bayes_name_AppEtAL <- "b_Kb_oipi_tr_plrckm.stan"
+bayes_name_AppEtAL
+#MOOS
+bayes_specs <- specs(bayes_name,
+burnin_steps=2000, saved_steps=2000, n_cores=8, n_chains = 4,
+# GPP_daily_lower = 0, ER_daily_upper = 0
+)
+#MOOS
+bayes_specs <- specs(bayes_name,
+burnin_steps=2000, saved_steps=2000, n_cores=8, n_chains = 4,
+GPP_daily_lower = 0, ER_daily_upper = 0
+)
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+data.frch.mm <- na.omit(FRCH.comb) %>%
+select(solar.time, depth, DO.obs, DO.sat, temp.water, light, discharge)
+data.frch.mm$solar.time <- as.POSIXct(data.frch.mm$solar.time, tz = "UTC")
+mm.test.frch <- metab(bayes_specs, data=data.frch.mm)
+library(xts)
+library(forecast)
+library(googledrive)
+library(ggpubr)
+library(anytime)
+library(googlesheets4)
+library(ggpmisc)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(zoo)
+library(xts)
+library(forecast)
+library(googledrive)
+library(streamMetabolizer)
+library(readr)
+library(here)
+library(rstan)
+bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
+bayes_name
+bayes_name_AppEtAL <- "b_Kb_oipi_tr_plrckm.stan"
+bayes_name_AppEtAL
+bayes_specs <- specs(bayes_name,
+burnin_steps=1000, saved_steps=3000, n_cores=4, n_chains = 4,
+GPP_daily_lower = 0, ER_daily_upper = 0
+)
+#FRCH
+setwd(here())
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+FRCH.comb <- FRCH.comb %>% filter(datetimeAK < "2019-08-01 00:00:00" & datetimeAK >= "2019-07-01 00:00:00")
+data.frch.mm <- na.omit(FRCH.comb) %>%
+select(solar.time, depth, DO.obs, DO.sat, temp.water, light, discharge)
+data.frch.mm$solar.time <- as.POSIXct(data.frch.mm$solar.time, tz = "UTC")
+mm.test.frch <- metab(bayes_specs, data=data.frch.mm)
+fit.frch <- get_fit(mm.test.frch)
+fit.frch
+mcmc3 <- get_mcmc(mm.test.frch)
+output77 <- rstan::traceplot(mcmc3, pars='K600_daily', nrow=3)
+output77
+output77
+library(ggpubr)
+library(anytime)
+library(googlesheets4)
+library(ggpmisc)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(zoo)
+library(xts)
+library(forecast)
+library(googledrive)
+library(streamMetabolizer)
+library(readr)
+library(here)
+library(rstan)
+bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
+bayes_name
+bayes_name_AppEtAL <- "b_Kb_oipi_tr_plrckm.stan"
+bayes_name_AppEtAL
+bayes_specs <- specs(bayes_name,
+burnin_steps=1000, saved_steps=9000, n_cores=4, n_chains = 4,
+GPP_daily_lower = 0, ER_daily_upper = 0
+)
+bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
+bayes_name
+bayes_name_AppEtAL <- "b_Kb_oipi_tr_plrckm.stan"
+bayes_name_AppEtAL
+bayes_specs <- specs(bayes_name,
+burnin_steps=1000, saved_steps=9000, n_cores=4, n_chains = 4,
+GPP_daily_lower = 0, ER_daily_upper = 0
+)
+#FRCH
+setwd(here())
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+FRCH.comb <- FRCH.comb %>% filter(datetimeAK < "2019-08-01 00:00:00" & datetimeAK >= "2019-07-01 00:00:00")
+data.frch.mm <- na.omit(FRCH.comb) %>%
+select(solar.time, depth, DO.obs, DO.sat, temp.water, light, discharge)
+data.frch.mm$solar.time <- as.POSIXct(data.frch.mm$solar.time, tz = "UTC")
+mm.test.frch <- metab(bayes_specs, data=data.frch.mm)
+fit.frch <- get_fit(mm.test.frch)
+fit.frch
+mcmc3 <- get_mcmc(mm.test.frch)
+output77 <- rstan::traceplot(mcmc3, pars='K600_daily', nrow=3)
+output77
+library(ggpubr)
+library(anytime)
+library(googlesheets4)
+library(ggpmisc)
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(zoo)
+library(xts)
+library(forecast)
+library(googledrive)
+library(streamMetabolizer)
+library(readr)
+library(here)
+library(rstan)
+bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
+bayes_name
+bayes_name_AppEtAL <- "b_Kb_oipi_tr_plrckm.stan"
+bayes_name_AppEtAL
+bayes_specs <- specs(bayes_name,
+burnin_steps=1000, saved_steps=18000, n_cores=4, n_chains = 4,
+GPP_daily_lower = 0, ER_daily_upper = 0
+)
+dat <- data_metab(num_days='3', res='15', day_start=4, day_end=28)
+#FRCH
+setwd(here())
+FRCH.comb <- read.csv(here("outputs", "frch.comb.csv"))
+FRCH.comb <- FRCH.comb %>% filter(datetimeAK < "2019-08-01 00:00:00" & datetimeAK >= "2019-07-01 00:00:00")
+data.frch.mm <- na.omit(FRCH.comb) %>%
+select(solar.time, depth, DO.obs, DO.sat, temp.water, light, discharge)
+data.frch.mm$solar.time <- as.POSIXct(data.frch.mm$solar.time, tz = "UTC")
+mm.test.frch <- metab(bayes_specs, data=data.frch.mm)
+fit.frch <- get_fit(mm.test.frch)
+fit.frch
+mcmc3 <- get_mcmc(mm.test.frch)
+output77 <- rstan::traceplot(mcmc3, pars='K600_daily', nrow=3)
+output77
