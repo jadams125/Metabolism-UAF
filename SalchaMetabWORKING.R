@@ -99,6 +99,7 @@ final.salcha.DT <- na.omit(salchaData) %>%
 str(final.salcha.DT)
 
 
+write.csv(final.salcha.DT, here("outputs", "correctedSalchaDT.csv"))
 
 
 bayes_name <- mm_name(type='bayes', pool_K600='binned', err_obs_iid=TRUE, err_proc_iid=TRUE)
