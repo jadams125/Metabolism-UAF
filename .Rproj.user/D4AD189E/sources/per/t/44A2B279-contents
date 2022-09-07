@@ -75,6 +75,36 @@ k.daily.sig<- data.frame(c(model.id=nms, bayes_fit@fit[["KQ_overall"]]))
 ess_bulk(fit$inst)
 
 
+
+
+#salcha
+
+here::here()
+
+salcha2021 <- read.csv(here::here("salcha2021.csv"))
+salcha2021$solar.time <- as.POSIXct(salcha2021$solar.time, tz = "UTC")
+
+
+
+
+data.salcha.mm <- na.omit(salcha2021) %>%
+  select(solar.time, depth, DO.obs, DO.sat, temp.water, light, discharge)
+
+
+as.numeric(calc_light(data.salcha.mm$solar.time, 64.47153, -146.9281))
+data.salcha.mm$light <- format(data.salcha.mm$light, scientific = F)
+str(data.salcha.mm)
+
+
+data.salcha.mm$discharge <- as.numeric(data.salcha.mm$discharge)
+data.salcha.mm$light <- as.numeric(data.salcha.mm$light)
+
+
+
+mm.test.salcha <- metab(bayes_specs, data=data.salcha.mm)
+
+
+
 #MOOS
 
 
