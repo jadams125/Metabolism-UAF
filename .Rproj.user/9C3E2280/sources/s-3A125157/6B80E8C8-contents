@@ -1,0 +1,76 @@
+#### Fit models for real data experiment
+
+source('01_tests/fit_lib.R')
+
+data_realfour <- readRDS('01_tests/dat/data_realfour.Rds')
+
+model_specs <- 
+  data_frame(
+    sd_val_abs =               c(0.24, 2.4,  12, 0.24, 2.4, 12),
+    err_proc_iid_sigma_scale = c( 0.1, 0.1, 0.1,    5,   5,  5),
+    model = 'b_Kb_oipi_tr_plrckm.stan',
+    sd_var = 'K600_daily_sigma_sigma') %>%
+  mutate(
+    j_fit=1:n())
+
+# create a data_frame where each row is a job
+jobs <- crossing(model_specs, i_dat=seq_along(data_realfour)) %>%
+  mutate(
+    i_nm=names(data_realfour)[i_dat],
+    job = 1:n())
+
+# determine which model[s] this process should run
+procid <- as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID', 'NA')) # for sbatch mode
+if(!is.na(procid)) {
+  batchid <- as.numeric(Sys.getenv('SLURM_ARRAY_JOB_ID', 'NA'))
+  jobs_to_run <- procid
+} else {
+  jobs_to_run <- dplyr::filter(jobs, job > 0)$job # can be whatever, e.g., dplyr::filter(jobs, i_nm >= 685, job >= 2055)$job
+}
+
+# fit each model to each sim
+for(job in jobs_to_run) {
+  # pick the sim and fit indices from the jobs data.frame
+  i <- jobs[[job,'i_dat']]
+  j <- jobs[[job,'j_fit']]
+  
+  # report on fitting status
+  message(sprintf('fitting model %02d: %s\tinput %0.0f \ttime: %s', j, model_specs$model[j], i, Sys.time()))
+  
+  # load in the data
+  dat <- data_realfour[[i]]
+  
+  # get reasonable inputs for discharge nodes and K600_daily_sigma_sigma
+  qbins <- calc_bins(log(dat$discharge), 'interval', n=5)$bounds
+  kmle <- median(na.omit(get_params(metab(specs('mle'), select(dat, -discharge)))$K600.daily))
+  
+  # fit the model using specs as modified by the config and our info about this site
+  sp <- specs(jobs$model[job])
+  sp[[jobs$sd_var[job]]] <- jobs$sd_val_abs[job] # kmle*jobs$sd_val[job]
+  sp$K600_lnQ_nodes_centers <- qbins
+  sp$err_proc_iid_sigma_scale <- jobs$err_proc_iid_sigma_scale[job]
+  sp$params_out <- setdiff(sp$params_out, c('err_obs_iid', 'err_proc_iid', 'GPP', 'ER'))
+  mm <- metab(sp, dat, info=mutate(jobs[job,], median_K=kmle))
+  
+  # extract inputs and outputs for reporting
+  disch <- get_data_daily(mm) %>% select(date, discharge.daily)
+  param_preds <- get_params(mm)
+  metab_preds <- predict_metab(mm)
+  DO_preds <- predict_DO(mm)
+  
+  # create some labels for plots and files
+  sdlab <- sprintf('d%s_m%d_%s_%1.2f_%1.1f', i, j, substr(jobs$model[job], 3, 4), jobs$sd_val_abs[job], jobs$err_proc_iid_sigma_scale[job])
+  rdsfile <- sprintf('outputs_%s.Rds', sdlab)
+  
+  # save everything except the really big stuff
+  mm@mcmc <- mm@mcmc_data <- NULL
+  
+  # save the outputs
+  sim <- list(
+    experiment='priors', 
+    sim_num=i, sim_label=jobs$i_nm[job], sim_cfg=data_frame(sim_num=i, sim_label='data_priors'), sim_model=NULL,
+    fit_dat=dat, fit_ddat=NULL,
+    true_DO=NULL, true_params=NULL, true_KQ=NULL, true_Kpred=NULL)
+  prep_fit(mm, j, sim, save_model=TRUE, save_outlist=TRUE)
+}
+message(sprintf('completed model fits at %s', Sys.time()))

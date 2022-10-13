@@ -1,0 +1,79 @@
+#### Fit models for 1-day bias experiment
+
+# 3 model_names and 81 inputs takes about 1.5 hours to run
+
+source('01_tests/fit_lib.R')
+
+sims <- readRDS('01_tests/sim/sim_bias.Rds')
+sim_cfg <- bind_rows(lapply(sims, function(sim) sim$sim_cfg))
+
+model_names <- c(
+  # with standard DO deficit sources:
+  'b_np_oi_tr_plrckm.stan',
+  'b_np_pi_tr_plrcko.stan',
+  'b_np_oipi_tr_plrckm.stan',
+  # With flipped DO deficit sources:
+  'b_np_oi_tr_plrcko.stan',
+  'b_np_pi_tr_plrckm.stan',
+  'b_np_oipi_tr_plrcko.stan'
+)
+
+# create a data_frame where each row is a job
+jobs <- crossing(j_fit=seq_along(model_names), i_sim=seq_along(sims)) %>%
+  mutate(model_name=model_names[j_fit]) %>%
+  left_join(sim_cfg, by=c(i_sim='i')) %>%
+  arrange(model_name, i_sim) %>%
+  mutate(job=1:n())
+
+# determine which jobs still haven't completed
+donefiles <- dir('01_tests/fit/bias', pattern='*_mm.Rds')
+done <- 
+  if(length(donefiles) > 0) {
+    data_frame(files=dir('01_tests/fit/bias', pattern='*_mm.Rds'), done=TRUE) %>%
+      tidyr::extract(files, into=c('sim','fit'), 'bias_sim([[:digit:]]+)_fit([[:digit:]]+)_mm.Rds', remove=FALSE, convert=TRUE) %>%
+      mutate(mtime=do.call(c, lapply(files, function(file) file.info(file.path('01_tests/fit/bias', file))[['mtime']]))) %>%
+      filter(mtime < as.POSIXct('2017-06-17 09:30:00', tz='America/Denver')) # modify this manually before each batch. use Yeti tz (MST/MDT)
+  } else {
+    data_frame(sim=0, fit=0, done=FALSE)
+  }
+jneed <- jobs %>%
+  filter(j_fit<4, 
+         #(model_name=='b_np_oipi_tr_plrckm.stan' & focus=='SZ') | 
+         focus=='KP' & rep > 10) %>%
+  left_join(mutate(done, done=TRUE), by=c(i_sim='sim', j_fit='fit')) %>%
+  arrange(desc(focus)) # for now
+todo <- filter(jneed, is.na(done))$job
+
+# determine which model[s] this process should run
+procid <- as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID', 'NA')) # for sbatch mode
+if(!is.na(procid)) {
+  batchid <- as.numeric(Sys.getenv('SLURM_ARRAY_JOB_ID', 'NA'))
+  jobs_to_run <- todo[procid] # or just procid
+} else {
+  jobs_to_run <- todo # or jobs$job
+}
+
+# fit each model to each sim
+for(job in jobs_to_run) {
+  # pick the sim and fit indices from the jobs data.frame
+  i <- jobs[[job,'i_sim']]
+  j <- jobs[[job,'j_fit']]
+  
+  # select sim list for inputs
+  sim <- sims[[i]]
+  
+  # report on fitting status
+  message(sprintf('fitting model %02d: %s\tinput %02d: %s\ttime: %s', j, model_names[j], i, sim$sim_label, Sys.time()))
+  
+  # fit the model using all the default specs except to also track DO_mod
+  features <- mm_parse_name(model_names[j])
+  sp <- specs(model_names[j], burnin_steps=1000, saved_steps=500) # PC uses 1000 burnin / 500 saved, but these are 1-day sims with less need for warmup, but they're so darn fast it's fine
+  sp <- revise(sp, params_out=union(
+    setdiff(params_out, c('GPP','ER','err_obs_iid','err_proc_iid')), # take out everything unnecessary
+    (if(features$err_obs_iid) 'DO_mod' else 'DO_mod_partial'))) # include DO_mod for this experiment
+  mm <- metab(sp, sim$fit_dat)
+  
+  # save the outputs
+  prep_fit(mm, j, sim, save_model=TRUE, save_outlist=TRUE)
+}
+message(sprintf('completed model fits at %s', Sys.time()))

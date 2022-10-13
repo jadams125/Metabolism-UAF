@@ -1,0 +1,57 @@
+
+exo.all <- read.csv("C:/Users/jacob/Downloads/EXO.ALL.csv")
+
+
+vaul.exo <- exo.all %>%
+  filter( site.ID == "VAUL")
+
+vaul.exo <- vaul.exo[-c(56616, 56619), ]
+
+
+
+vaul.exo$DateTime <- as.POSIXct(vaul.exo$DateTime)
+str(vaul.exo)
+
+vaul.exo$ODO.mgL <- as.numeric(vaul.exo$ODO.mgL)
+
+ODO.Mgl.vaul.2020 <- aggregate(ODO.mgL ~ DateTime, vaul.exo, mean )
+
+ODO.psat.vaul.2020 <- aggregate(as.numeric(ODO.Psat) ~ DateTime, vaul.exo, mean )
+
+#Where is DO saturated data 
+
+Temp.C.2020.vaul <- aggregate(Temp.C ~ DateTime, vaul.exo, mean )
+
+Temp.C.2020.vaul
+
+plot(ODO.Mgl.vaul.2020, vaul.exo$DateTime)
+
+
+
+library(shiny)
+ui <- fluidPage(
+)
+server <- function(input, output, session) {
+}
+shinyApp(ui, server)
+
+
+ui <- fluidPage(
+  plotOutput("plot", click = "plot_click"),
+  verbatimTextOutput("info")
+)
+
+server <- function(input, output) {
+  output$plot <- renderPlot({
+    plot(ODO.Mgl.vaul.2020, vaul.exo$DateTime)
+  }, res = 96)
+  
+  output$info <- renderPrint({
+    req(input$plot_click)
+    x <- round(input$plot_click$x, 2)
+    y <- round(input$plot_click$y, 2)
+    cat("[", x, ", ", y, "]", sep = "")
+  })
+}
+
+

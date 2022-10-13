@@ -1,0 +1,470 @@
+### Gap-fill EXO & SUNA ###
+
+library(zoo)
+library(xts)
+library(forecast)
+library(imputeTS)
+library(tidyverse)
+library(here)
+library(itsmr)
+library(purrr)
+
+### Data ###
+# EXO to list
+EXO.list <- list.files(path="EXO_processed", 
+                       recursive=F, 
+                       pattern="EXO.cl", 
+                       full.names=TRUE)
+
+EXO.cl <- lapply(EXO.list, 
+                 read.csv, 
+                 stringsAsFactors=FALSE, 
+                 header = TRUE)
+
+# Should do this programmatically, but file names contain junk that would need to be trimmed off
+names(EXO.cl) <- c("FRCH", "MOOS", "POKE", "STRT", "VAUL")
+
+# Format datetime
+EXO.cl <- lapply(EXO.cl, function(x) {
+  mutate(x, datetimeAK = as.POSIXct(datetimeAK, format = "%Y-%m-%d %H:%M:%S", tz= "America/Anchorage"))
+})
+
+# SUNA to list
+SUNA.list <- list.files(path="SUNA_processed", 
+                       recursive=F, 
+                       pattern="means", 
+                       full.names=TRUE)
+
+SUNA.cl <- lapply(SUNA.list, 
+                 read.csv, 
+                 stringsAsFactors=FALSE, 
+                 header = TRUE)
+
+# Should do this programmatically, but file names contain junk that would need to be trimmed off
+names(SUNA.cl) <- c("FRCH", "MOOS", "POKE", "STRT", "VAUL")
+
+# Format datetime
+SUNA.cl <- lapply(SUNA.cl, function(x) {
+  mutate(x, datetimeAK = as.POSIXct(datetimeAK, format = "%Y-%m-%d %H:%M:%S", tz= "America/Anchorage"))
+})
+
+##################
+### Impute EXO ###
+##################
+
+### Apply a moving average smoother to Turbidity ###
+## smooth.ma from itsmr library: averaging by 2q+1, with q = 3 here
+
+EXO.cl <- lapply(EXO.cl, function(x) {
+  mutate(x, Turb.ma = smooth.ma(Turbidity.FNU.mn.adj, 3))
+})
+
+## Plot to compare smoothed to raw Turbidity
+# to dataframe for compatibility with ggplot
+EXO.cl.df <- bind_rows(EXO.cl, .id = "Site")
+
+Turb.ma.pl <- EXO.cl.df %>% 
+  ggplot(aes(x = datetimeAK, y = Turbidity.FNU.mn.adj)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = Turb.ma), color = "red") +
+  facet_wrap(~Site, scales = "free_y")
+
+fDOM.pl <- EXO.cl.df %>% 
+  ggplot(aes(x = datetimeAK, y = fDOM.QSU.mn.adj)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = Turb.ma), color = "red") +
+  facet_wrap(~Site, scales = "free_y")
+
+
+### Fill gaps in Turbidity ###
+anyNA(EXO.cl, recursive = TRUE)
+lapply(EXO.cl, summary)
+
+# Make univariate time series, covert to zoo, then to ts #
+turb.only <- lapply(EXO.cl, '[', (c("datetimeAK", "Turb.ma")))
+
+turb.ts <- lapply(turb.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+turb.xts <- lapply(turb.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+turb.int <- lapply(turb.xts, function(x) {na_kalman(x)
+})
+
+anyNA(turb.int, recursive = TRUE)
+
+# revert xts to dataframe
+turb.ma.int = lapply(turb.int, function(x) {data.frame(datetimeAK=time(x), turb.ma.int=as.matrix(x))
+})
+
+turb.ma.int <- lapply(turb.ma.int, setNames, c("datetimeAK", "Turb.FNU.ma.int"))
+
+# Rejoin to instrument record (EXO.cl)
+EXO.cl.int <- map2(EXO.cl, turb.ma.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed turbidity time series
+# to dataframe for compatibility with ggplot
+EXO.cl.int.df <- bind_rows(EXO.cl.int, .id = "Site")
+
+Turb.ma.int.pl <- EXO.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = Turbidity.FNU.mn.adj)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = Turb.FNU.ma.int), color = "green") +
+  geom_line(aes(x = datetimeAK, y = Turb.ma), color = "red") +
+  facet_wrap(~Site, scales = "free_y")
+
+ggsave(Turb.ma.int.pl, file = "Turb_ma_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+### Fill gaps in Temperature ###
+anyNA(EXO.cl, recursive = TRUE)
+lapply(EXO.cl, summary)
+
+# Make univariate time series, covert to zoo, then to ts #
+Temp.only <- lapply(EXO.cl, '[', (c("datetimeAK", "Temp.C.mn")))
+
+Temp.ts <- lapply(Temp.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+Temp.xts <- lapply(Temp.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+# type = "level" added to circumvent error with optim ("need finite values of 'fn'")
+Temp.int <- lapply(Temp.xts, function(x) {na_kalman(x, type = "level")
+})
+
+anyNA(Temp.int, recursive = TRUE)
+
+# revert xts to dataframe
+Temp.int = lapply(Temp.int, function(x) {data.frame(datetimeAK=time(x), Temp.C.int=as.matrix(x))
+})
+
+Temp.int <- lapply(Temp.int, setNames, c("datetimeAK", "Temp.C.int"))
+
+# Rejoin to instrument record (EXO.cl)
+EXO.cl.int <- map2(EXO.cl.int, Temp.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed turbidity time series
+# to dataframe for compatibility with ggplot
+EXO.cl.int.df <- bind_rows(EXO.cl.int, .id = "Site")
+
+Temp.int.pl <- EXO.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = Temp.C.mn)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = Temp.C.int), color = "green") +
+  xlim(as.POSIXct(c("2019-05-01", "2019-10-27"))) +
+  facet_wrap(~Site)
+
+ggsave(Temp.int.pl, file = "Temp_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+## Gap-fill fDOM
+# Make univariate time series, covert to zoo, then to ts #
+fDOM.only <- lapply(EXO.cl.int, '[', (c("datetimeAK", "fDOM.QSU.mn.adj")))
+
+fDOM.ts <- lapply(fDOM.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+fDOM.xts <- lapply(fDOM.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+# type = "level" added to circumvent error with optim ("need finite values of 'fn'")
+# Still getting error here with fDOM
+fDOM.int <- lapply(fDOM.xts, function(x) {na_kalman(x, type = "level")
+})
+
+anyNA(fDOM.int, recursive = TRUE)
+
+# revert xts to dataframe
+fDOM.int = lapply(fDOM.int, function(x) {data.frame(datetimeAK=time(x), fDOM.QSU.int=as.matrix(x))
+})
+
+fDOM.int <- lapply(fDOM.int, setNames, c("datetimeAK", "fDOM.QSU.int"))
+
+# Rejoin to instrument record (EXO.cl)
+EXO.cl.int <- map2(EXO.cl.int, fDOM.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed turbidity time series
+# to dataframe for compatibility with ggplot
+EXO.cl.int.df <- bind_rows(EXO.cl.int, .id = "Site")
+
+fDOM.int.pl <- EXO.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = fDOM.QSU.mn.adj)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = fDOM.QSU.int), color = "green") +
+  #xlim(as.POSIXct(c("2019-09-01", "2019-10-05"))) +
+  facet_wrap(~Site)
+
+ggsave(fDOM.int.pl, file = "fDOM_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+## Gap-fill spcond
+# Make univariate time series, covert to zoo, then to ts #
+spcond.only <- lapply(EXO.cl.int, '[', (c("datetimeAK", "SpCond.uScm.mn.adj")))
+
+spcond.ts <- lapply(spcond.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+spcond.xts <- lapply(spcond.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+# type = "level" added to circumvent error with optim ("need finite values of 'fn'")
+spcond.int <- lapply(spcond.xts, function(x) {na_kalman(x, type = "level")
+})
+# convergence issue
+
+anyNA(spcond.int, recursive = TRUE)
+
+# revert xts to dataframe
+spcond.int = lapply(spcond.int, function(x) {data.frame(datetimeAK=time(x), spcond.uScm.int=as.matrix(x))
+})
+
+spcond.int <- lapply(spcond.int, setNames, c("datetimeAK", "spcond.uScm.int"))
+
+# Rejoin to instrument record (EXO.cl)
+EXO.cl.int <- map2(EXO.cl.int, spcond.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed turbidity time series
+# to dataframe for compatibility with ggplot
+EXO.cl.int.df <- bind_rows(EXO.cl.int, .id = "Site")
+
+spcond.int.pl <- EXO.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = SpCond.uScm.mn.adj)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = spcond.uScm.int), color = "green") +
+  #xlim(as.POSIXct(c("2019-09-01", "2019-10-05"))) +
+  facet_wrap(~Site)
+
+ggsave(spcond.int.pl, file = "spcond_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+# export interpolated EXO
+FRCH.EXO.int <- EXO.cl.int[["FRCH"]]
+write.csv(FRCH.EXO.int, "EXO_processed/FRCH_EXO_int.csv")
+
+MOOS.EXO.int <- EXO.cl.int[["MOOS"]]
+write.csv(MOOS.EXO.int, "EXO_processed/MOOS_EXO_int.csv")
+
+STRT.EXO.int <- EXO.cl.int[["STRT"]]
+write.csv(STRT.EXO.int, "EXO_processed/STRT_EXO_int.csv")
+
+POKE.EXO.int <- EXO.cl.int[["POKE"]]
+write.csv(POKE.EXO.int, "EXO_processed/POKE_EXO_int.csv")
+
+VAUL.EXO.int <- EXO.cl.int[["VAUL"]]
+write.csv(VAUL.EXO.int, "EXO_processed/VAUL_EXO_int.csv")
+
+###################
+### Impute SUNA ###
+###################
+## Gap-fill nitrate
+# Make univariate time series, covert to zoo, then to ts #
+SUNA.cl.int <- SUNA.cl
+
+SUNA.cl.int <- map(SUNA.cl.int, ~filter(., !is.na(datetimeAK)))
+
+NO3.only <- lapply(SUNA.cl.int, '[', (c("datetimeAK", "nitrateuM.mn")))
+
+no3.ts <- lapply(NO3.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+no3.xts <- lapply(no3.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+# type = "level" added to circumvent error with optim ("need finite values of 'fn'")
+no3.int <- lapply(no3.xts, function(x) {na_kalman(x, type = "level")
+})
+
+anyNA(no3.int, recursive = TRUE)
+
+# revert xts to dataframe
+no3.int = lapply(no3.int, function(x) {data.frame(datetimeAK=time(x), no3.uM.int=as.matrix(x))
+})
+
+no3.int <- lapply(no3.int, setNames, c("datetimeAK", "no3.uM.int"))
+
+# Rejoin to instrument record (SUNA.cl.int)
+SUNA.cl.int <- map2(SUNA.cl.int, no3.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed nitrate time series
+# to dataframe for compatibility with ggplot
+SUNA.cl.int.df <- bind_rows(SUNA.cl.int, .id = "Site")
+
+no3.int.pl <- SUNA.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = nitrateuM.mn)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = no3.uM.int), color = "green") +
+  #xlim(as.POSIXct(c("2019-09-01", "2019-10-05"))) +
+  facet_wrap(~Site)
+
+ggsave(no3.int.pl, file = "no3_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+### Apply a moving average smoother to abs254 ###
+## smooth.ma from itsmr library: averaging by 2q+1, with q = 3 here
+## Time series model fails... using raw abs 254 for interp
+SUNA.cl.int <- lapply(SUNA.cl.int, function(x) {
+  mutate(x, a254.ma = smooth.ma(abs254.adj.mn, 3))
+})
+
+## Plot to compare smoothed to raw abs254
+# to dataframe for compatibility with ggplot
+SUNA.cl.df <- bind_rows(SUNA.cl.int, .id = "Site")
+
+abs254.ma.pl <- SUNA.cl.df %>% 
+  ggplot(aes(x = datetimeAK, y = abs254.adj.mn)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = a254.ma), color = "red") +
+  facet_wrap(~Site, scales = "free_y")
+
+## Gap-fill abs254
+# Make univariate time series, covert to zoo, then to ts #
+a254.only <- lapply(SUNA.cl.int, '[', (c("datetimeAK", "abs254.adj.mn")))
+
+a254.ts <- lapply(a254.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+a254.xts <- lapply(a254.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+# type = "level" added to circumvent error with optim ("need finite values of 'fn'")
+a254.int <- lapply(a254.xts, function(x) {na_kalman(x, type = "level")
+})
+
+anyNA(a254.int, recursive = TRUE)
+
+# revert xts to dataframe
+a254.int = lapply(a254.int, function(x) {data.frame(datetimeAK=time(x), a254.int=as.matrix(x))
+})
+
+a254.int <- lapply(a254.int, setNames, c("datetimeAK", "a254.adj.int"))
+
+# Rejoin to instrument record (EXO.cl)
+SUNA.cl.int <- map2(SUNA.cl.int, a254.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed turbidity time series
+# to dataframe for compatibility with ggplot
+SUNA.cl.int.df <- bind_rows(SUNA.cl.int, .id = "Site")
+
+a254.int.pl <- SUNA.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = abs254.adj.mn)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = a254.adj.int), color = "green") +
+  #xlim(as.POSIXct(c("2019-09-01", "2019-10-05"))) +
+  facet_wrap(~Site)
+
+ggsave(a254.int.pl, file = "abs254_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+## Gap-fill abs350
+# Make univariate time series, covert to zoo, then to ts #
+a350.only <- lapply(SUNA.cl.int, '[', (c("datetimeAK", "abs350.adj.mn")))
+
+a350.ts <- lapply(a350.only, function(x) {read.zoo(x, index.column=1, format="%Y-%m-%d %H:%M:%S", tz="America/Anchorage")
+})
+
+a350.xts <- lapply(a350.ts, function(x) {as.xts(x)
+})
+
+# Apply auto.arima (default model in call to na_kalman) and kalman filter (default = smooth) to impute missing values using na.kalman from imputeTS #
+# type = "level" added to circumvent error with optim ("need finite values of 'fn'")
+a350.int <- lapply(a350.xts, function(x) {na_kalman(x, type = "level")
+})
+
+anyNA(a350.int, recursive = TRUE)
+
+# revert xts to dataframe
+a350.int = lapply(a350.int, function(x) {data.frame(datetimeAK=time(x), a350.uM.int=as.matrix(x))
+})
+
+a350.int <- lapply(a350.int, setNames, c("datetimeAK", "a350.adj.int"))
+
+# Rejoin to instrument record (EXO.cl)
+SUNA.cl.int <- map2(SUNA.cl.int, a350.int, ~merge(.x, .y, by = "datetimeAK"))
+
+## Compare instrument record and with imputed turbidity time series
+# to dataframe for compatibility with ggplot
+SUNA.cl.int.df <- bind_rows(SUNA.cl.int, .id = "Site")
+
+a350.int.pl <- SUNA.cl.int.df %>% 
+  ggplot(aes(x = datetimeAK, y = abs350.adj.mn)) +
+  geom_point(color = "blue") +
+  #geom_line(color = "blue") +
+  geom_line(aes(x = datetimeAK, y = a350.adj.int), color = "green") +
+  #xlim(as.POSIXct(c("2019-09-01", "2019-10-05"))) +
+  facet_wrap(~Site)
+
+ggsave(a350.int.pl, file = "abs50_int_2019.pdf", path = here("plots"), width = 11, height = 8, units = "in")
+
+### Merge EXO & SUNA ###
+## Reload interpolated EXO
+EXO.list <- list.files(path="EXO_processed", 
+                       recursive=F, 
+                       pattern="int", 
+                       full.names=TRUE)
+
+EXO.cl.int <- lapply(EXO.list, 
+                 read.csv, 
+                 stringsAsFactors=FALSE, 
+                 header = TRUE)
+
+# Should do this programmatically, but file names contain junk that would need to be trimmed off
+names(EXO.cl.int) <- c("FRCH", "MOOS", "POKE", "STRT", "VAUL")
+
+# Format datetime
+EXO.cl.int <- lapply(EXO.cl.int, function(x) {
+  mutate(x, datetimeAK = as.POSIXct(datetimeAK, format = "%Y-%m-%d %H:%M:%S", tz= "America/Anchorage"))
+})
+
+## Join EXO & SUNA
+# Round dates
+EXO.cl.int <- lapply(EXO.cl.int, function(x) {
+  mutate(x, datetimeAK = lubridate::round_date(datetimeAK, "15 minutes"))
+})
+  
+SUNA.cl.int <- lapply(SUNA.cl.int, function(x) {
+  mutate(x, datetimeAK = lubridate::round_date(datetimeAK, "15 minutes"))
+})
+
+# Add column with site name 
+EXO.cl.int <- mapply(cbind, EXO.cl.int, "Site" = names(EXO.cl.int), SIMPLIFY=F)
+SUNA.cl.int <- mapply(cbind, SUNA.cl.int, "Site" = names(SUNA.cl.int), SIMPLIFY=F)
+
+# Join & convert to a single dataframe
+SUNA.EXO.int <- map2_df(EXO.cl.int, SUNA.cl.int, full_join, by = c("Site", "datetimeAK"))
+
+# Coalesce Site & site.ID
+SUNA.EXO.int$site.ID <- coalesce(SUNA.EXO.int$Site, SUNA.EXO.int$site.ID)
+
+# Plot to check
+SUNA.EXO.int %>% ggplot(aes(x = datetimeAK, y = nitrateuM.mn)) +
+                    geom_point() +
+                    #geom_line(aes(x = datetimeAK, y = no3.uM.int), color = "green") +
+                    facet_wrap(~Site)
+
+SUNA.EXO.int %>% ggplot(aes(x = datetimeAK, y = abs254.adj.mn)) +
+  geom_line() +
+  facet_wrap(~Site)
+
+SUNA.EXO.int %>% ggplot(aes(x = datetimeAK, y = fDOM.QSU.mn.adj)) +
+  geom_point() +
+  facet_wrap(~Site)
+
+SUNA.EXO.int %>% ggplot(aes(x = fDOM.QSU.mn.adj, y = abs254.adj.mn)) +
+  geom_point() +
+  facet_wrap(~Site)
+
+# Export interpolated, merged SUNA-EXO dataset
+dir.create(here("processed_sensor_dat"))
+
+write.csv(SUNA.EXO.int, here("processed_sensor_dat", "SUNA.EXO.int.csv"), row.names = FALSE)
