@@ -125,6 +125,11 @@ moos.ap.2020.Data$air.pressure.mbar <- moos.ap.2020.Data$Abs.Pres..kPa..LGR.S.N.
         # #already in Mbar
         # strt.ap.2020.Data$air.pressure.mbar <- strt.ap.2020.Data$Abs.Pres..mbar..LGR.S.N..20005934..SEN.S.N..20005934..LBL..P. * 1
 
+
+
+
+
+
 #######
 
 
